@@ -1,6 +1,6 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.entity;
 
-import com.hoangbaoshop.hoangbaocosmetics_backend.entity.enums.TransactionType;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
 
