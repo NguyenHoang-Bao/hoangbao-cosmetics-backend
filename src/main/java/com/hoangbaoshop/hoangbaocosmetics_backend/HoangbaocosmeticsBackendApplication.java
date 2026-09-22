@@ -7,7 +7,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class HoangbaocosmeticsBackendApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(HoangbaocosmeticsBackendApplication.class, args);
+        
+        SpringApplication.run(HoangbaocosmeticsBackendApplication.class, args);
 	}
 
 }
