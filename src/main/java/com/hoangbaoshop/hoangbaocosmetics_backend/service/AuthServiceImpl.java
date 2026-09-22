@@ -9,6 +9,8 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.repository.RoleRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.UserRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.security.jwt.JwtUtils;
 import com.hoangbaoshop.hoangbaocosmetics_backend.security.service.UserDetailsImpl;
+import com.hoangbaoshop.hoangbaocosmetics_backend.exception.BadRequestException;
+import com.hoangbaoshop.hoangbaocosmetics_backend.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -37,13 +39,13 @@ public class AuthServiceImpl implements AuthService {
     public void register(RegisterRequest request) {
         // 1. Kiểm tra dữ liệu đã tồn tại chưa
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Tên đăng nhập đã tồn tại!");
+            throw new BadRequestException("Tên đăng nhập đã tồn tại!");
         }
         if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email đã được sử dụng!");
+            throw new BadRequestException("Email đã được sử dụng!");
         }
         if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new RuntimeException("Số điện thoại đã được sử dụng!");
+            throw new BadRequestException("Số điện thoại đã được sử dụng!");
         }
 
         // 2. Tạo đối tượng User mới và mã hóa mật khẩu
@@ -59,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
         // 3. Gán Role mặc định là CUSTOMER cho người dùng mới đăng ký
         Set<Role> roles = new HashSet<>();
         Role userRole = roleRepository.findByNameRole("CUSTOMER")
-                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy Role CUSTOMER trong Database."));
+                .orElseThrow(() -> new ResourceNotFoundException("Lỗi: Không tìm thấy Role CUSTOMER trong Database."));
         roles.add(userRole);
         user.setRoles(roles);
 
