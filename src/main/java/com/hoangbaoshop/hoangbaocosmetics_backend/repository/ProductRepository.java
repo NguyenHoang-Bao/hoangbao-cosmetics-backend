@@ -20,4 +20,8 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
                                  @Param("categoryId") Integer categoryId,
                                  @Param("brandId") Integer brandId,
                                  Pageable pageable);
+
+    boolean existsByCategory_IdCategory(Integer idCategory);
+
+    boolean existsByBrand_IdBrand(Integer idBrand);
 }
