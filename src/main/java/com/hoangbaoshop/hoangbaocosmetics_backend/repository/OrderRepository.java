@@ -36,4 +36,24 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
             @Param("endDate") LocalDateTime endDate,
             Pageable pageable
     );
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0.0) FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED")
+    Double sumTotalRevenue();
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0.0) FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED AND o.createdAt >= :startDate AND o.createdAt <= :endDate")
+    Double sumRevenueBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    long countByStatus(OrderStatus status);
+
+    @Query("SELECT FUNCTION('DATE', o.createdAt), COALESCE(SUM(o.totalAmount), 0.0), COUNT(o) " +
+           "FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED " +
+           "AND o.createdAt >= :startDate AND o.createdAt <= :endDate " +
+           "GROUP BY FUNCTION('DATE', o.createdAt) ORDER BY FUNCTION('DATE', o.createdAt) ASC")
+    java.util.List<Object[]> getDailyRevenue(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT FUNCTION('MONTH', o.createdAt), COALESCE(SUM(o.totalAmount), 0.0), COUNT(o) " +
+           "FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED " +
+           "AND FUNCTION('YEAR', o.createdAt) = :year " +
+           "GROUP BY FUNCTION('MONTH', o.createdAt) ORDER BY FUNCTION('MONTH', o.createdAt) ASC")
+    java.util.List<Object[]> getMonthlyRevenue(@Param("year") int year);
 }
