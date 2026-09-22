@@ -13,3 +13,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+
+# Cấu hình JWT cho ứng dụng
+jwt:
+  # Secret key tối thiểu 256-bit (chuỗi Base64)
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  # Thời hạn token: 86400000 ms = 24 giờ = 1 ngày
+  expiration-ms: 86400000
