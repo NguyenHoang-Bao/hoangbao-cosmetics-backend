@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/orders/my-orders").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/orders/*").permitAll()
+                        .requestMatchers("/api/admin/**").authenticated()
                         // Các API còn lại bắt buộc phải xác thực (có token)
                         .anyRequest().authenticated()
                 );
