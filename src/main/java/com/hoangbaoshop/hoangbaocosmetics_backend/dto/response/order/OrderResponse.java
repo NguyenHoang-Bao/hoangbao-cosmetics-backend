@@ -1,8 +1,8 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.order;
 
-import com.hoangbaoshop.hoangbaocosmetics_backend.entity.enums.OrderStatus;
-import com.hoangbaoshop.hoangbaocosmetics_backend.entity.enums.OrderType;
-import com.hoangbaoshop.hoangbaocosmetics_backend.entity.enums.PaymentMethod;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderType;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod;
 import lombok.*;
 
 import java.time.LocalDateTime;
