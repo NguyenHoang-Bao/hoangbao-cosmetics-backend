@@ -16,5 +16,6 @@ public class OrderDetailResponse {
     private String capacity;
     private Integer quantity;
     private Double price;
+    private Double subTotal;
     private Boolean isReviewed;
 }

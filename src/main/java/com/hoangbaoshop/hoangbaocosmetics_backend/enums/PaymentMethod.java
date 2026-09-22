@@ -1,4 +1,4 @@
-package com.hoangbaoshop.hoangbaocosmetics_backend.entity.enums;
+package com.hoangbaoshop.hoangbaocosmetics_backend.enums;
 
 public enum PaymentMethod {
     COD,

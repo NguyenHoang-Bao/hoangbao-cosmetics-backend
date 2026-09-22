@@ -1,8 +1,8 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.entity;
 
-import com.hoangbaoshop.hoangbaocosmetics_backend.entity.enums.OrderStatus;
-import com.hoangbaoshop.hoangbaocosmetics_backend.entity.enums.OrderType;
-import com.hoangbaoshop.hoangbaocosmetics_backend.entity.enums.PaymentMethod;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderType;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -87,5 +87,13 @@ public class Order {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
+    }
+
+    public void addOrderDetail(OrderDetail detail) {
+        if (this.orderDetails == null) {
+            this.orderDetails = new ArrayList<>();
+        }
+        this.orderDetails.add(detail);
+        detail.setOrder(this);
     }
 }

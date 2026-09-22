@@ -1,6 +1,5 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.order;
 
-import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderType;
 import com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -15,14 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OrderRequest {
-
-    private Integer idUser; // Null nếu khách vãng lai mua tại quầy
-
-    private Integer idStaff; // Nhân viên tạo đơn (nếu mua offline)
-
-    @NotNull(message = "Loại đơn hàng không được để trống")
-    private OrderType orderType;
+public class CreateOrderRequest {
 
     @NotBlank(message = "Tên khách hàng không được để trống")
     private String customerName;
@@ -30,17 +22,15 @@ public class OrderRequest {
     @NotBlank(message = "Số điện thoại không được để trống")
     private String phoneNumber;
 
+    @NotBlank(message = "Địa chỉ nhận hàng không được để trống")
     private String deliveryAddress;
 
     @NotNull(message = "Phương thức thanh toán không được để trống")
     private PaymentMethod paymentMethod;
 
-    @Builder.Default
-    private Double shippingFee = 0.0;
-
     private String note;
 
     @NotEmpty(message = "Đơn hàng phải có ít nhất một sản phẩm")
     @Valid
-    private List<OrderDetailRequest> items;
+    private List<OrderItemRequest> items;
 }
