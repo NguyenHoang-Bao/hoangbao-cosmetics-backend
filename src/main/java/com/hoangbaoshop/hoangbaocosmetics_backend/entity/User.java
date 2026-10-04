@@ -43,11 +43,22 @@ public class User {
     private Boolean enabled = true;
 
     @Builder.Default
+    @Column(name = "loyalty_points")
+    private Integer loyaltyPoints = 0;
+
+    @Builder.Default
+    @Column(name = "auth_provider", length = 20)
+    private String authProvider = "LOCAL"; // 'LOCAL' hoặc 'GOOGLE'
+    @Column(name = "provider_id", length = 100)
+    private String providerId; // ID duy nhất của tài khoản từ Google
+
+    @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "user_roles",
         joinColumns = @JoinColumn(name = "id_user"),
         inverseJoinColumns = @JoinColumn(name = "id_role")
     )
+
     private Set<Role> roles = new HashSet<>();
 }
