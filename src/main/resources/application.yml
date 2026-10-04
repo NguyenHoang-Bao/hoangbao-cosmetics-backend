@@ -30,3 +30,7 @@ payment:
     template: "compact2" # Template hiển thị mã QR: compact, compact2, qr_only
   sepay:
     api-key: "SEPAY_API_KEY_SECRET" # API Key do SePay cấp để xác thực Webhook
+
+# Cấu hình OAuth Google
+google:
+  client-id: "237683305659-mv2f4c61lghtdahblnffl6f6tbn6p66m.apps.googleusercontent.com"

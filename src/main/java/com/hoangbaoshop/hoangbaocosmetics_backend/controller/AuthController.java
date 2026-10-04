@@ -2,6 +2,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.controller;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.common.ApiResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.LoginRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.RegisterRequest;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.GoogleLoginRequest;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.FacebookLoginRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.auth.AuthResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.service.AuthService;
 import jakarta.validation.Valid;
@@ -9,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping("/api/auth")
@@ -24,11 +27,22 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(null, "Đăng ký tài khoản thành công!"));
     }
-
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập thành công!"));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        AuthResponse response = authService.loginWithGoogle(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập Google thành công!"));
+    }
+
+    @PostMapping("/facebook")
+    public ResponseEntity<ApiResponse<AuthResponse>> loginWithFacebook(@Valid @RequestBody FacebookLoginRequest request) {
+        AuthResponse response = authService.loginWithFacebook(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập Facebook thành công!"));
     }
 }
 
