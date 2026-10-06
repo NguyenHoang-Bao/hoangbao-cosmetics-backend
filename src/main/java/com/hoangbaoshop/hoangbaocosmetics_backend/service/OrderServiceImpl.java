@@ -242,16 +242,23 @@ public class OrderServiceImpl implements OrderService {
         double totalProductPrice = 0.0;
         double shippingFee = 0.0; // Bán tại quầy không tính phí vận chuyển
 
+        String rawPhone = request.getPhoneNumber() != null ? request.getPhoneNumber().trim().replaceAll("\\s+", "") : "";
+        User customer = null;
+        if (!rawPhone.isBlank()) {
+            customer = userRepository.findByPhoneNumber(rawPhone).orElse(null);
+        }
+
         String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank())
                 ? request.getCustomerName().trim()
-                : "Khách mua tại quầy";
+                : (customer != null ? customer.getFullName() : "Khách mua tại quầy");
 
         Order order = Order.builder()
                 .orderCode(orderCode)
                 .staff(staff)
+                .user(customer)
                 .orderType(OrderType.OFFLINE)
                 .customerName(customerName)
-                .phoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber().trim() : "TẠI QUẦY")
+                .phoneNumber(!rawPhone.isBlank() ? rawPhone : "TẠI QUẦY")
                 .deliveryAddress("Mua tại cửa hàng")
                 .shippingFee(shippingFee)
                 .paymentMethod(request.getPaymentMethod())
@@ -286,8 +293,22 @@ public class OrderServiceImpl implements OrderService {
             order.addOrderDetail(orderDetail);
         }
 
+        double discount = (request.getDiscount() != null && request.getDiscount() > 0) ? request.getDiscount() : 0.0;
+        double finalAmount = Math.max(0.0, totalProductPrice - discount + shippingFee);
+
         order.setTotalProductPrice(totalProductPrice);
-        order.setTotalAmount(totalProductPrice + shippingFee);
+        order.setTotalAmount(finalAmount);
+
+        // Tích điểm và cấn trừ điểm tích lũy của khách hàng
+        if (customer != null) {
+            int currentPoints = customer.getLoyaltyPoints() != null ? customer.getLoyaltyPoints() : 0;
+            if (request.getRedeemPoints() != null && request.getRedeemPoints() > 0) {
+                currentPoints = Math.max(0, currentPoints - request.getRedeemPoints());
+            }
+            int earnedPoints = (int) (finalAmount / 20000); // Mỗi 20.000đ tích lũy 1 điểm
+            customer.setLoyaltyPoints(currentPoints + earnedPoints);
+            userRepository.save(customer);
+        }
 
         Order savedOrder = orderRepository.save(order);
         return mapToOrderResponse(savedOrder);

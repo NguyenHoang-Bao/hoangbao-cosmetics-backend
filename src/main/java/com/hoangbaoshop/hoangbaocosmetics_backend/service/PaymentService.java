@@ -8,6 +8,8 @@ public interface PaymentService {
 
     PaymentQrResponse generateVietQr(String orderCode);
 
+    PaymentQrResponse generateMomoQr(String orderCode);
+
     PaymentStatusResponse checkPaymentStatus(String orderCode);
 
     boolean processSepayWebhook(SepayWebhookRequest request, String authorizationHeader);

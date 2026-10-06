@@ -71,6 +71,34 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
+    public PaymentQrResponse generateMomoQr(String orderCode) {
+        Order order = orderRepository.findByOrderCode(orderCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã: " + orderCode));
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BadRequestException("Đơn hàng đã bị hủy, không thể tiến hành thanh toán!");
+        }
+
+        long amount = Math.round(order.getTotalAmount());
+        // Chuẩn định dạng MoMo QR chuyển tiền: 2|99|sđt|tên||0|0|số tiền|nội dung|transfer_myqr
+        String momoPayload = String.format("2|99|0359490221|NGUYEN HOANG BAO||0|0|%d|%s|transfer_myqr", amount, order.getOrderCode());
+        String encodedMomo = URLEncoder.encode(momoPayload, StandardCharsets.UTF_8);
+        String momoQrUrl = String.format("https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=%s", encodedMomo);
+
+        return PaymentQrResponse.builder()
+                .orderCode(order.getOrderCode())
+                .totalAmount(order.getTotalAmount())
+                .qrCodeUrl(momoQrUrl)
+                .bankId("MOMO")
+                .accountNumber("0359490221")
+                .accountName("NGUYEN HOANG BAO")
+                .content(order.getOrderCode())
+                .paymentMethod("MOMO")
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PaymentStatusResponse checkPaymentStatus(String orderCode) {
         Order order = orderRepository.findByOrderCode(orderCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã: " + orderCode));

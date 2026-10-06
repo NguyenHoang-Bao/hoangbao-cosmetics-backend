@@ -20,6 +20,11 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     Page<Order> findByUserUsername(String username, Pageable pageable);
 
+    long countByPhoneNumber(String phoneNumber);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0.0) FROM Order o WHERE o.phoneNumber = :phone AND o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED")
+    Double sumTotalAmountByPhone(@Param("phone") String phone);
+
     @Query("SELECT o FROM Order o WHERE " +
            "(:status IS NULL OR o.status = :status) AND " +
            "(:orderType IS NULL OR o.orderType = :orderType) AND " +

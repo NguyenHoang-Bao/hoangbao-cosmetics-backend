@@ -25,6 +25,12 @@ public class CreatePosOrderRequest {
 
     private String note;
 
+    @Builder.Default
+    private Double discount = 0.0;
+
+    @Builder.Default
+    private Integer redeemPoints = 0;
+
     @NotEmpty(message = "Đơn hàng phải có ít nhất một sản phẩm")
     @Valid
     private List<OrderItemRequest> items;

@@ -20,11 +20,18 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    // 1. Sinh mã VietQR cho đơn hàng (Khách xem mã QR để chuyển khoản)
+    // 1. Sinh mã VietQR cho đơn hàng (Khách xem mã QR để chuyển khoản ngân hàng)
     @GetMapping("/vietqr/{orderCode}")
     public ResponseEntity<ApiResponse<PaymentQrResponse>> getVietQr(@PathVariable String orderCode) {
         PaymentQrResponse response = paymentService.generateVietQr(orderCode);
         return ResponseEntity.ok(ApiResponse.success(response, "Lấy thông tin mã VietQR thành công!"));
+    }
+
+    // 1.1 Sinh mã MoMo QR cho đơn hàng (Khách quét mã ví MoMo)
+    @GetMapping("/momo/{orderCode}")
+    public ResponseEntity<ApiResponse<PaymentQrResponse>> getMomoQr(@PathVariable String orderCode) {
+        PaymentQrResponse response = paymentService.generateMomoQr(orderCode);
+        return ResponseEntity.ok(ApiResponse.success(response, "Lấy thông tin mã MoMo QR thành công!"));
     }
 
     // 2. Kiểm tra trạng thái thanh toán (Frontend polling 2s/lần để biết khi nào khách đã chuyển tiền)
