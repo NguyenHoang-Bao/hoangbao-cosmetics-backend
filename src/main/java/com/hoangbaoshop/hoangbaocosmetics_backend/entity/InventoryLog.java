@@ -38,6 +38,9 @@ public class InventoryLog {
     @Column(name = "reference_id")
     private Integer referenceId;
 
+    @Column(name = "note", length = 255)
+    private String note;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

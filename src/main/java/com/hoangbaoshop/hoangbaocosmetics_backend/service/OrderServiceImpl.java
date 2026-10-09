@@ -4,14 +4,17 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.dto.common.PageResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.order.*;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.order.OrderDetailResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.order.OrderResponse;
+import com.hoangbaoshop.hoangbaocosmetics_backend.entity.InventoryLog;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.Order;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.OrderDetail;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.ProductVariant;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.User;
 import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus;
 import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderType;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.TransactionType;
 import com.hoangbaoshop.hoangbaocosmetics_backend.exception.BadRequestException;
 import com.hoangbaoshop.hoangbaocosmetics_backend.exception.ResourceNotFoundException;
+import com.hoangbaoshop.hoangbaocosmetics_backend.repository.InventoryLogRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.OrderRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.ProductVariantRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.UserRepository;
@@ -34,6 +37,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
+    private final InventoryLogRepository inventoryLogRepository;
 
     @Override
     @Transactional
@@ -66,14 +70,12 @@ public class OrderServiceImpl implements OrderService {
             ProductVariant variant = productVariantRepository.findById(item.getIdVariant())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm với ID: " + item.getIdVariant()));
 
-            if (variant.getStockQuantity() < item.getQuantity()) {
+            // Trừ tồn kho nguyên tử ở cấp Database (Chống âm kho khi nhiều người mua cùng lúc)
+            int updatedRows = productVariantRepository.decreaseStockQuantity(variant.getIdVariant(), item.getQuantity());
+            if (updatedRows == 0) {
                 String productName = variant.getProduct() != null ? variant.getProduct().getName() : "Sản phẩm";
-                throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho (còn lại: " + variant.getStockQuantity() + ")");
+                throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho (hiện còn: " + variant.getStockQuantity() + ")");
             }
-
-            // Trừ trực tiếp số lượng tồn kho
-            variant.setStockQuantity(variant.getStockQuantity() - item.getQuantity());
-            productVariantRepository.save(variant);
 
             double itemPrice = variant.getPrice();
             totalProductPrice += itemPrice * item.getQuantity();
@@ -92,6 +94,23 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(totalProductPrice + shippingFee);
 
         Order savedOrder = orderRepository.save(order);
+
+        // Ghi sổ cái biến động kho (Audit log xuất bán đơn hàng online)
+        User logActor = user != null ? user : userRepository.findByUsername("admin").orElse(null);
+        if (logActor != null && savedOrder.getOrderDetails() != null) {
+            for (OrderDetail detail : savedOrder.getOrderDetails()) {
+                InventoryLog log = InventoryLog.builder()
+                        .variant(detail.getVariant())
+                        .user(logActor)
+                        .transactionType(TransactionType.EXPORT_SALE)
+                        .quantityChange(-detail.getQuantity())
+                        .referenceId(savedOrder.getIdOrder())
+                        .note("Xuất bán đơn hàng Online #" + savedOrder.getOrderCode())
+                        .build();
+                inventoryLogRepository.save(log);
+            }
+        }
+
         return mapToOrderResponse(savedOrder);
     }
 
@@ -115,9 +134,47 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public OrderResponse getOrderByCode(String orderCode) {
+    public OrderResponse getOrderByCode(String orderCode, String phoneNumber, String currentUsername) {
         Order order = orderRepository.findByOrderCode(orderCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã: " + orderCode));
+
+        // 1. Kiểm tra nếu người dùng đã đăng nhập và là chủ sở hữu hoặc nhân viên/admin
+        boolean isAuthorized = false;
+        if (currentUsername != null && !currentUsername.isBlank()) {
+            if (order.getUser() != null && currentUsername.equalsIgnoreCase(order.getUser().getUsername())) {
+                isAuthorized = true;
+            } else {
+                User currentUser = userRepository.findByUsername(currentUsername).orElse(null);
+                if (currentUser != null && currentUser.getRoles() != null) {
+                    boolean isAdminOrStaff = currentUser.getRoles().stream()
+                            .anyMatch(r -> {
+                                String role = r.getNameRole();
+                                return "ADMIN".equals(role) || "STAFF".equals(role)
+                                        || "ONLINE_STAFF".equals(role) || "WAREHOUSE_MANAGER".equals(role);
+                            });
+                    if (isAdminOrStaff) {
+                        isAuthorized = true;
+                    }
+                }
+            }
+        }
+
+        // 2. Nếu không phải chủ tài khoản hay nhân viên (khách vãng lai tra cứu)
+        // -> Bắt buộc phải cung cấp số điện thoại đặt hàng để xác thực (Bịt lỗ hổng IDOR)
+        if (!isAuthorized) {
+            if (phoneNumber == null || phoneNumber.isBlank()) {
+                throw new BadRequestException("Vui lòng cung cấp số điện thoại đặt hàng để xác thực tra cứu đơn hàng!");
+            }
+
+            // Chuẩn hóa loại bỏ các ký tự đặc biệt, chỉ giữ số để so sánh chính xác
+            String cleanInputPhone = phoneNumber.replaceAll("[^0-9]", "");
+            String cleanOrderPhone = order.getPhoneNumber() != null ? order.getPhoneNumber().replaceAll("[^0-9]", "") : "";
+
+            if (!cleanOrderPhone.equals(cleanInputPhone)) {
+                throw new BadRequestException("Số điện thoại không khớp với thông tin đơn hàng!");
+            }
+        }
+
         return mapToOrderResponse(order);
     }
 
@@ -179,9 +236,10 @@ public class OrderServiceImpl implements OrderService {
         // Kiểm tra hợp lệ của luồng chuyển đổi trạng thái
         validateStatusTransition(currentStatus, newStatus);
 
-        // Nếu chuyển sang trạng thái CANCELLED -> Hoàn lại tồn kho
+        // Nếu chuyển sang trạng thái CANCELLED -> Hoàn lại tồn kho và ghi sổ cái
         if (newStatus == OrderStatus.CANCELLED) {
-            rollbackStockForOrder(order);
+            User staffUser = (staffUsername != null && !staffUsername.isBlank()) ? userRepository.findByUsername(staffUsername).orElse(null) : null;
+            rollbackStockForOrder(order, staffUser, request.getNote());
         }
 
         order.setStatus(newStatus);
@@ -212,8 +270,9 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Đơn hàng này đã bị hủy trước đó!");
         }
 
-        // Hoàn lại tồn kho cho tất cả các sản phẩm trong đơn
-        rollbackStockForOrder(order);
+        User staffUser = (staffUsername != null && !staffUsername.isBlank()) ? userRepository.findByUsername(staffUsername).orElse(null) : null;
+        // Hoàn lại tồn kho cho tất cả các sản phẩm trong đơn và ghi sổ cái
+        rollbackStockForOrder(order, staffUser, request.getReason());
 
         order.setStatus(OrderStatus.CANCELLED);
         String cancelNote = "[HỦY ĐƠN]: " + request.getReason().trim();
@@ -264,14 +323,12 @@ public class OrderServiceImpl implements OrderService {
             ProductVariant variant = productVariantRepository.findById(item.getIdVariant())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm với ID: " + item.getIdVariant()));
 
-            if (variant.getStockQuantity() < item.getQuantity()) {
+            // Trừ tồn kho nguyên tử ở cấp Database (Chống âm kho khi nhiều người mua cùng lúc)
+            int updatedRows = productVariantRepository.decreaseStockQuantity(variant.getIdVariant(), item.getQuantity());
+            if (updatedRows == 0) {
                 String productName = variant.getProduct() != null ? variant.getProduct().getName() : "Sản phẩm";
-                throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho (còn lại: " + variant.getStockQuantity() + ")");
+                throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho (hiện còn: " + variant.getStockQuantity() + ")");
             }
-
-            // Trừ trực tiếp số lượng tồn kho
-            variant.setStockQuantity(variant.getStockQuantity() - item.getQuantity());
-            productVariantRepository.save(variant);
 
             double itemPrice = variant.getPrice();
             totalProductPrice += itemPrice * item.getQuantity();
@@ -290,6 +347,23 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(totalProductPrice + shippingFee);
 
         Order savedOrder = orderRepository.save(order);
+
+        // Ghi sổ cái biến động kho (Audit log xuất bán tại quầy POS)
+        User logActor = staff != null ? staff : userRepository.findByUsername("admin").orElse(null);
+        if (logActor != null && savedOrder.getOrderDetails() != null) {
+            for (OrderDetail detail : savedOrder.getOrderDetails()) {
+                InventoryLog log = InventoryLog.builder()
+                        .variant(detail.getVariant())
+                        .user(logActor)
+                        .transactionType(TransactionType.EXPORT_SALE)
+                        .quantityChange(-detail.getQuantity())
+                        .referenceId(savedOrder.getIdOrder())
+                        .note("Xuất bán tại quầy POS đơn #" + savedOrder.getOrderCode())
+                        .build();
+                inventoryLogRepository.save(log);
+            }
+        }
+
         return mapToOrderResponse(savedOrder);
     }
 
@@ -317,13 +391,26 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private void rollbackStockForOrder(Order order) {
+    private void rollbackStockForOrder(Order order, User actor, String reason) {
         if (order.getOrderDetails() != null) {
+            User logActor = actor != null ? actor : userRepository.findByUsername("admin").orElse(null);
             for (OrderDetail detail : order.getOrderDetails()) {
                 ProductVariant variant = detail.getVariant();
                 if (variant != null) {
-                    variant.setStockQuantity(variant.getStockQuantity() + detail.getQuantity());
-                    productVariantRepository.save(variant);
+                    productVariantRepository.increaseStockQuantity(variant.getIdVariant(), detail.getQuantity());
+
+                    if (logActor != null) {
+                        String logNote = "[HỦY ĐƠN #" + order.getOrderCode() + "]: " + ((reason != null && !reason.isBlank()) ? reason.trim() : "Hoàn lại kho");
+                        InventoryLog log = InventoryLog.builder()
+                                .variant(variant)
+                                .user(logActor)
+                                .transactionType(TransactionType.RETURN)
+                                .quantityChange(detail.getQuantity())
+                                .referenceId(order.getIdOrder())
+                                .note(logNote)
+                                .build();
+                        inventoryLogRepository.save(log);
+                    }
                 }
             }
         }

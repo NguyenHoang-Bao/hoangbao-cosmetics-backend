@@ -29,6 +29,20 @@ public class ImportReceiptDetail {
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
+    @Builder.Default
+    @Column(name = "shelf_quantity")
+    private Integer shelfQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "central_quantity")
+    private Integer centralQuantity = 0;
+
     @Column(name = "import_price", nullable = false)
     private Double importPrice;
+
+    @Column(name = "batch_number", length = 50)
+    private String batchNumber;
+
+    @Column(name = "expiry_date")
+    private java.time.LocalDate expiryDate;
 }

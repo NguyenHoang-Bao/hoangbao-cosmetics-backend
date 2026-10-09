@@ -125,7 +125,18 @@ public class PaymentServiceImpl implements PaymentService {
             return false;
         }
 
-        // 4. Tìm đơn hàng tương ứng
+        // 4. Trích xuất mã giao dịch duy nhất từ SePay
+        String txId = request.getReferenceCode() != null && !request.getReferenceCode().isBlank()
+                ? request.getReferenceCode().trim()
+                : String.valueOf(request.getId());
+
+        // 5. Kiểm tra Idempotency: Nếu mã giao dịch (txId) này đã được xử lý trước đó -> Bỏ qua ngay
+        if (orderRepository.existsByTransactionId(txId)) {
+            log.info("SePay Webhook (Idempotent): Giao dịch '{}' đã được xử lý trước đó. Xác nhận thành công để tránh SePay retry.", txId);
+            return true;
+        }
+
+        // 6. Tìm đơn hàng tương ứng
         Optional<Order> orderOpt = orderRepository.findByOrderCode(orderCode);
         if (orderOpt.isEmpty()) {
             log.warn("SePay Webhook: Không tìm thấy đơn hàng trong hệ thống với mã: {}", orderCode);
@@ -133,33 +144,43 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         Order order = orderOpt.get();
+        Double transferAmount = request.getTransferAmount() != null ? request.getTransferAmount() : 0.0;
 
-        // 5. Nếu đơn đã thanh toán hoặc đã xử lý rồi thì không xử lý lại
-        if (order.getStatus() != OrderStatus.PENDING) {
-            log.info("SePay Webhook: Đơn hàng {} đã được xử lý trước đó (trạng thái hiện tại: {})", orderCode, order.getStatus());
+        // 7. Xử lý tình huống đặc biệt: Đơn hàng đã bị HỦY trước đó nhưng khách vẫn chuyển tiền
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            log.warn("SePay Webhook: Đơn hàng {} đã bị HỦY trước đó nhưng nhận được thanh toán: %,.0f VNĐ (Mã GD: {}). Cần liên hệ hoàn tiền!",
+                    orderCode, transferAmount, txId);
+            order.setWebhookStatus("PAID_BUT_CANCELLED");
+            order.setTransactionId(txId);
+            String refundNote = String.format("[CẢNH BÁO HOÀN TIỀN]: Khách chuyển %,.0f VNĐ vào đơn đã hủy trước đó (Mã GD: %s)", transferAmount, txId);
+            String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
+            order.setNote(currentNote + refundNote);
+            orderRepository.save(order);
             return true;
         }
 
-        // 6. Kiểm tra số tiền chuyển có đủ không
-        Double transferAmount = request.getTransferAmount();
-        if (transferAmount == null || transferAmount < order.getTotalAmount()) {
-            log.warn("SePay Webhook: Số tiền chuyển ({} VNĐ) không đủ cho đơn hàng {} (yêu cầu {} VNĐ)",
+        // 8. Nếu đơn đã ở trạng thái thanh toán rồi -> Bỏ qua
+        if (order.getStatus() != OrderStatus.PENDING) {
+            log.info("SePay Webhook: Đơn hàng {} đã ở trạng thái {} trước đó. Bỏ qua.", orderCode, order.getStatus());
+            return true;
+        }
+
+        // 9. Kiểm tra số tiền chuyển có đủ không
+        if (transferAmount < order.getTotalAmount()) {
+            log.warn("SePay Webhook: Số tiền chuyển (%,.0f VNĐ) không đủ cho đơn hàng {} (yêu cầu %,.0f VNĐ)",
                     transferAmount, orderCode, order.getTotalAmount());
             order.setWebhookStatus("UNDERPAID");
-            String underpaidNote = String.format("[CẢNH BÁO]: Khách chuyển thiếu tiền. Nhận: %,.0f VNĐ, Cần: %,.0f VNĐ",
-                    transferAmount != null ? transferAmount : 0.0, order.getTotalAmount());
+            String underpaidNote = String.format("[CẢNH BÁO]: Khách chuyển thiếu tiền. Nhận: %,.0f VNĐ, Cần: %,.0f VNĐ (Mã GD: %s)",
+                    transferAmount, order.getTotalAmount(), txId);
             String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
             order.setNote(currentNote + underpaidNote);
             orderRepository.save(order);
             return false;
         }
 
-        // 7. Cập nhật đơn hàng sang PROCESSING và ghi nhận giao dịch
+        // 10. Cập nhật đơn hàng sang PROCESSING và ghi nhận giao dịch thành công
         order.setStatus(OrderStatus.PROCESSING);
         order.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
-        String txId = request.getReferenceCode() != null && !request.getReferenceCode().isBlank()
-                ? request.getReferenceCode()
-                : String.valueOf(request.getId());
         order.setTransactionId(txId);
         order.setWebhookStatus("SUCCESS");
 
@@ -170,7 +191,8 @@ public class PaymentServiceImpl implements PaymentService {
         order.setNote(currentNote + successNote);
 
         orderRepository.save(order);
-        log.info("SePay Webhook: Đã xác nhận thanh toán thành công cho đơn hàng {} với số tiền %,.0f VNĐ!", orderCode, transferAmount);
+        log.info("SePay Webhook: Xác nhận thanh toán thành công cho đơn hàng {} với số tiền %,.0f VNĐ (Mã GD: {})!",
+                orderCode, transferAmount, txId);
         return true;
     }
 }

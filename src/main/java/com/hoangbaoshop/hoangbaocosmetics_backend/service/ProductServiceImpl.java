@@ -186,10 +186,15 @@ public class ProductServiceImpl implements ProductService {
                 .map(v -> ProductVariantResponse.builder()
                         .idVariant(v.getIdVariant())
                         .sku(v.getSku())
+                        .barcode(v.getBarcode())
                         .capacity(v.getCapacity())
                         .originalPrice(v.getOriginalPrice())
                         .price(v.getPrice())
                         .stockQuantity(v.getStockQuantity())
+                        .shelfStock(v.getShelfStock())
+                        .centralStock(v.getCentralStock())
+                        .shelfMinAlert(v.getShelfMinAlert())
+                        .shelfCapacity(v.getShelfCapacity())
                         .build())
                 .collect(Collectors.toList());
 

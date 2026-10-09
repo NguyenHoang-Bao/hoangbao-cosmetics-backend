@@ -24,6 +24,9 @@ public class ProductVariant {
     @Column(name = "sku", nullable = false, unique = true, length = 100)
     private String sku;
 
+    @Column(name = "barcode", length = 100)
+    private String barcode;
+
     @Column(name = "capacity", nullable = false, length = 50)
     private String capacity;
 
@@ -36,4 +39,24 @@ public class ProductVariant {
     @Builder.Default
     @Column(name = "stock_quantity")
     private Integer stockQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "shelf_stock")
+    private Integer shelfStock = 0;
+
+    @Builder.Default
+    @Column(name = "central_stock")
+    private Integer centralStock = 0;
+
+    @Builder.Default
+    @Column(name = "shelf_min_alert")
+    private Integer shelfMinAlert = 5;
+
+    @Builder.Default
+    @Column(name = "shelf_capacity")
+    private Integer shelfCapacity = 20;
+
+    @Builder.Default
+    @Column(name = "is_active")
+    private Boolean isActive = true;
 }

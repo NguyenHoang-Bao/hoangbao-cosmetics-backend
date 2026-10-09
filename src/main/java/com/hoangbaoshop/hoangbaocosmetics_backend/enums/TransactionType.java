@@ -4,5 +4,6 @@ public enum TransactionType {
     IMPORT,
     EXPORT_SALE,
     RETURN,
-    ADJUSTMENT
+    ADJUSTMENT,
+    TRANSFER
 }

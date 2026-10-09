@@ -50,8 +50,13 @@ public class OrderController {
     }
 
     @GetMapping("/{orderCode}")
-    public ResponseEntity<ApiResponse<OrderResponse>> getOrderByCode(@PathVariable String orderCode) {
-        OrderResponse response = orderService.getOrderByCode(orderCode);
+    public ResponseEntity<ApiResponse<OrderResponse>> getOrderByCode(
+            @PathVariable String orderCode,
+            @RequestParam(required = false) String phoneNumber,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        String currentUsername = userDetails != null ? userDetails.getUsername() : null;
+        OrderResponse response = orderService.getOrderByCode(orderCode, phoneNumber, currentUsername);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

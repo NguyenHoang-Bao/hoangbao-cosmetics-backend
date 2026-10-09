@@ -2,9 +2,9 @@ spring:
   application:
     name: hoangbaocosmetics_backend
   datasource:
-    url: jdbc:mysql://localhost:3306/hoangbao_cosmetics_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&useSSL=false
-    username: root
-    password: "NhB0359490221*"
+    url: ${DB_URL:jdbc:mysql://localhost:3306/hoangbao_cosmetics_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USERNAME:root}
+    password: "${DB_PASSWORD:NhB0359490221*}"
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -13,24 +13,25 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+        default_batch_fetch_size: 30
 
 # Cấu hình JWT cho ứng dụng
 jwt:
   # Secret key tối thiểu 256-bit (chuỗi Base64)
-  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   # Thời hạn token: 86400000 ms = 24 giờ = 1 ngày
-  expiration-ms: 86400000
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 # Cấu hình thanh toán VietQR & SePay Webhook
 payment:
   vietqr:
-    bank-id: "MBBank" # Mã ngân hàng (MBBank, VCB, ACB, TPBank, TCB, VPB,...)
-    account-number: "14580886868" # Số tài khoản ngân hàng nhận tiền
-    account-name: "NGUYEN HOANG BAO" # Tên chủ tài khoản
-    template: "compact2" # Template hiển thị mã QR: compact, compact2, qr_only
+    bank-id: "${VIETQR_BANK_ID:MBBank}" # Mã ngân hàng (MBBank, VCB, ACB, TPBank, TCB, VPB,...)
+    account-number: "${VIETQR_ACCOUNT_NUMBER:14580886868}" # Số tài khoản ngân hàng nhận tiền
+    account-name: "${VIETQR_ACCOUNT_NAME:NGUYEN HOANG BAO}" # Tên chủ tài khoản
+    template: "${VIETQR_TEMPLATE:compact2}" # Template hiển thị mã QR: compact, compact2, qr_only
   sepay:
-    api-key: "SEPAY_API_KEY_SECRET" # API Key do SePay cấp để xác thực Webhook
+    api-key: "${SEPAY_API_KEY:SEPAY_API_KEY_SECRET}" # API Key do SePay cấp để xác thực Webhook
 
 # Cấu hình OAuth Google
 google:
-  client-id: "237683305659-mv2f4c61lghtdahblnffl6f6tbn6p66m.apps.googleusercontent.com"
+  client-id: "${GOOGLE_CLIENT_ID:237683305659-mv2f4c61lghtdahblnffl6f6tbn6p66m.apps.googleusercontent.com}"

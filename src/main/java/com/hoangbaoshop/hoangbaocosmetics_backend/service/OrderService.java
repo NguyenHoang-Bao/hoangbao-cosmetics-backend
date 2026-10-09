@@ -19,7 +19,7 @@ public interface OrderService {
 
     PageResponse<OrderResponse> getMyOrders(String username, Pageable pageable);
 
-    OrderResponse getOrderByCode(String orderCode);
+    OrderResponse getOrderByCode(String orderCode, String phoneNumber, String currentUsername);
 
     // Admin / Staff
     PageResponse<OrderResponse> getAllOrdersAdmin(

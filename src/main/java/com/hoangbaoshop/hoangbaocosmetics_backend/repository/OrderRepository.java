@@ -18,6 +18,8 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     Optional<Order> findByOrderCode(String orderCode);
 
+    boolean existsByTransactionId(String transactionId);
+
     Page<Order> findByUserUsername(String username, Pageable pageable);
 
     @Query("SELECT o FROM Order o WHERE " +

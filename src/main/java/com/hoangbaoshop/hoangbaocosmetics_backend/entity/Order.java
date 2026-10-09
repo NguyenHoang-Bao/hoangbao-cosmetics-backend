@@ -52,6 +52,13 @@ public class Order {
     private Double totalProductPrice;
 
     @Builder.Default
+    @Column(name = "discount_amount")
+    private Double discountAmount = 0.0;
+
+    @Column(name = "coupon_code", length = 50)
+    private String couponCode;
+
+    @Builder.Default
     @Column(name = "shipping_fee")
     private Double shippingFee = 0.0;
 
@@ -78,6 +85,9 @@ public class Order {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderDetail> orderDetails = new ArrayList<>();
@@ -87,6 +97,14 @@ public class Order {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     public void addOrderDetail(OrderDetail detail) {
