@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +23,9 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     @Query("SELECT v FROM ProductVariant v JOIN FETCH v.product WHERE v.idVariant = :idVariant")
     Optional<ProductVariant> findByIdWithProduct(@Param("idVariant") Integer idVariant);
+
+    @Query("SELECT v FROM ProductVariant v JOIN FETCH v.product WHERE v.idVariant IN :ids")
+    List<ProductVariant> findAllWithProductByIdIn(@Param("ids") Collection<Integer> ids);
 
     /**
      * Trừ tồn kho một cách an toàn (Atomic Update ở mức Database).

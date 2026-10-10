@@ -27,7 +27,6 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/admin/orders")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'ONLINE_STAFF', 'WAREHOUSE_MANAGER')")
 public class AdminOrderController {
 

@@ -53,6 +53,9 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     long countByStatus(OrderStatus status);
 
+    @Query("SELECT o.status, COUNT(o) FROM Order o GROUP BY o.status")
+    java.util.List<Object[]> countOrdersByStatusGrouped();
+
     @Query("SELECT FUNCTION('DATE', o.createdAt), COALESCE(SUM(o.totalAmount), 0.0), COUNT(o) " +
            "FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED " +
            "AND o.createdAt >= :startDate AND o.createdAt <= :endDate " +
@@ -61,7 +64,14 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     @Query("SELECT FUNCTION('MONTH', o.createdAt), COALESCE(SUM(o.totalAmount), 0.0), COUNT(o) " +
            "FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED " +
+           "AND o.createdAt >= :startDate AND o.createdAt < :endDate " +
+           "GROUP BY FUNCTION('MONTH', o.createdAt) ORDER BY FUNCTION('MONTH', o.createdAt) ASC")
+    java.util.List<Object[]> getMonthlyRevenueBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT FUNCTION('MONTH', o.createdAt), COALESCE(SUM(o.totalAmount), 0.0), COUNT(o) " +
+           "FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED " +
            "AND FUNCTION('YEAR', o.createdAt) = :year " +
            "GROUP BY FUNCTION('MONTH', o.createdAt) ORDER BY FUNCTION('MONTH', o.createdAt) ASC")
     java.util.List<Object[]> getMonthlyRevenue(@Param("year") int year);
 }
+

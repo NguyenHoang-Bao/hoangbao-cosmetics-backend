@@ -24,9 +24,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -66,9 +71,24 @@ public class OrderServiceImpl implements OrderService {
                 .orderDetails(new ArrayList<>())
                 .build();
 
-        for (OrderItemRequest item : request.getItems()) {
-            ProductVariant variant = productVariantRepository.findByIdWithProduct(item.getIdVariant())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm với ID: " + item.getIdVariant()));
+        // 1. Sắp xếp items theo idVariant để ngăn ngừa Deadlock giữa các transaction mua đồng thời
+        List<OrderItemRequest> sortedItems = request.getItems().stream()
+                .sorted(Comparator.comparing(OrderItemRequest::getIdVariant))
+                .toList();
+
+        List<Integer> variantIds = sortedItems.stream()
+                .map(OrderItemRequest::getIdVariant)
+                .toList();
+
+        // 2. Batch load toàn bộ biến thể và eager load Product trong 1 câu SQL duy nhất
+        Map<Integer, ProductVariant> variantMap = productVariantRepository.findAllWithProductByIdIn(variantIds).stream()
+                .collect(Collectors.toMap(ProductVariant::getIdVariant, v -> v));
+
+        for (OrderItemRequest item : sortedItems) {
+            ProductVariant variant = variantMap.get(item.getIdVariant());
+            if (variant == null) {
+                throw new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm với ID: " + item.getIdVariant());
+            }
 
             // Trừ tồn kho nguyên tử ở cấp Database (Chống âm kho khi nhiều người mua cùng lúc)
             int updatedRows = productVariantRepository.decreaseStockQuantity(variant.getIdVariant(), item.getQuantity());
@@ -95,20 +115,20 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Ghi sổ cái biến động kho (Audit log xuất bán đơn hàng online)
+        // Ghi sổ cái biến động kho (Audit log xuất bán đơn hàng online) bằng batch saveAll
         User logActor = user != null ? user : userRepository.findByUsername("admin").orElse(null);
         if (logActor != null && savedOrder.getOrderDetails() != null) {
-            for (OrderDetail detail : savedOrder.getOrderDetails()) {
-                InventoryLog log = InventoryLog.builder()
-                        .variant(detail.getVariant())
-                        .user(logActor)
-                        .transactionType(TransactionType.EXPORT_SALE)
-                        .quantityChange(-detail.getQuantity())
-                        .referenceId(savedOrder.getIdOrder())
-                        .note("Xuất bán đơn hàng Online #" + savedOrder.getOrderCode())
-                        .build();
-                inventoryLogRepository.save(log);
-            }
+            List<InventoryLog> logs = savedOrder.getOrderDetails().stream()
+                    .map(detail -> InventoryLog.builder()
+                            .variant(detail.getVariant())
+                            .user(logActor)
+                            .transactionType(TransactionType.EXPORT_SALE)
+                            .quantityChange(-detail.getQuantity())
+                            .referenceId(savedOrder.getIdOrder())
+                            .note("Xuất bán đơn hàng Online #" + savedOrder.getOrderCode())
+                            .build())
+                    .toList();
+            inventoryLogRepository.saveAll(logs);
         }
 
         return mapToOrderResponse(savedOrder);
@@ -144,13 +164,15 @@ public class OrderServiceImpl implements OrderService {
             if (order.getUser() != null && currentUsername.equalsIgnoreCase(order.getUser().getUsername())) {
                 isAuthorized = true;
             } else {
-                User currentUser = userRepository.findByUsername(currentUsername).orElse(null);
-                if (currentUser != null && currentUser.getRoles() != null) {
-                    boolean isAdminOrStaff = currentUser.getRoles().stream()
-                            .anyMatch(r -> {
-                                String role = r.getNameRole();
-                                return "ADMIN".equals(role) || "STAFF".equals(role)
-                                        || "ONLINE_STAFF".equals(role) || "WAREHOUSE_MANAGER".equals(role);
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.isAuthenticated() && auth.getAuthorities() != null) {
+                    boolean isAdminOrStaff = auth.getAuthorities().stream()
+                            .anyMatch(a -> {
+                                String authName = a.getAuthority();
+                                return "ROLE_ADMIN".equals(authName) || "ADMIN".equals(authName)
+                                        || "ROLE_STAFF".equals(authName) || "STAFF".equals(authName)
+                                        || "ROLE_ONLINE_STAFF".equals(authName) || "ONLINE_STAFF".equals(authName)
+                                        || "ROLE_WAREHOUSE_MANAGER".equals(authName) || "WAREHOUSE_MANAGER".equals(authName);
                             });
                     if (isAdminOrStaff) {
                         isAuthorized = true;
@@ -319,9 +341,24 @@ public class OrderServiceImpl implements OrderService {
                 .orderDetails(new ArrayList<>())
                 .build();
 
-        for (OrderItemRequest item : request.getItems()) {
-            ProductVariant variant = productVariantRepository.findByIdWithProduct(item.getIdVariant())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm với ID: " + item.getIdVariant()));
+        // 1. Sắp xếp items theo idVariant để ngăn ngừa Deadlock giữa các transaction mua đồng thời
+        List<OrderItemRequest> sortedItems = request.getItems().stream()
+                .sorted(Comparator.comparing(OrderItemRequest::getIdVariant))
+                .toList();
+
+        List<Integer> variantIds = sortedItems.stream()
+                .map(OrderItemRequest::getIdVariant)
+                .toList();
+
+        // 2. Batch load toàn bộ biến thể và eager load Product trong 1 câu SQL duy nhất
+        Map<Integer, ProductVariant> variantMap = productVariantRepository.findAllWithProductByIdIn(variantIds).stream()
+                .collect(Collectors.toMap(ProductVariant::getIdVariant, v -> v));
+
+        for (OrderItemRequest item : sortedItems) {
+            ProductVariant variant = variantMap.get(item.getIdVariant());
+            if (variant == null) {
+                throw new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm với ID: " + item.getIdVariant());
+            }
 
             // Trừ tồn kho nguyên tử ở cấp Database (Chống âm kho khi nhiều người mua cùng lúc)
             int updatedRows = productVariantRepository.decreaseStockQuantity(variant.getIdVariant(), item.getQuantity());
@@ -348,20 +385,20 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Ghi sổ cái biến động kho (Audit log xuất bán tại quầy POS)
+        // Ghi sổ cái biến động kho (Audit log xuất bán tại quầy POS) bằng batch saveAll
         User logActor = staff != null ? staff : userRepository.findByUsername("admin").orElse(null);
         if (logActor != null && savedOrder.getOrderDetails() != null) {
-            for (OrderDetail detail : savedOrder.getOrderDetails()) {
-                InventoryLog log = InventoryLog.builder()
-                        .variant(detail.getVariant())
-                        .user(logActor)
-                        .transactionType(TransactionType.EXPORT_SALE)
-                        .quantityChange(-detail.getQuantity())
-                        .referenceId(savedOrder.getIdOrder())
-                        .note("Xuất bán tại quầy POS đơn #" + savedOrder.getOrderCode())
-                        .build();
-                inventoryLogRepository.save(log);
-            }
+            List<InventoryLog> logs = savedOrder.getOrderDetails().stream()
+                    .map(detail -> InventoryLog.builder()
+                            .variant(detail.getVariant())
+                            .user(logActor)
+                            .transactionType(TransactionType.EXPORT_SALE)
+                            .quantityChange(-detail.getQuantity())
+                            .referenceId(savedOrder.getIdOrder())
+                            .note("Xuất bán tại quầy POS đơn #" + savedOrder.getOrderCode())
+                            .build())
+                    .toList();
+            inventoryLogRepository.saveAll(logs);
         }
 
         return mapToOrderResponse(savedOrder);

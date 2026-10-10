@@ -25,7 +25,6 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/admin/warehouse")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
 public class WarehouseController {
 

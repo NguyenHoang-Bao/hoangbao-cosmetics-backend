@@ -71,7 +71,9 @@ public class DashboardServiceImpl implements DashboardService {
                     .build());
         }
 
-        List<Object[]> rows = orderRepository.getMonthlyRevenue(targetYear);
+        LocalDateTime startDate = LocalDateTime.of(targetYear, 1, 1, 0, 0, 0);
+        LocalDateTime endDate = LocalDateTime.of(targetYear + 1, 1, 1, 0, 0, 0);
+        List<Object[]> rows = orderRepository.getMonthlyRevenueBetween(startDate, endDate);
         for (Object[] row : rows) {
             int month = ((Number) row[0]).intValue();
             double rev = ((Number) row[1]).doubleValue();
@@ -132,11 +134,19 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     @Transactional(readOnly = true)
     public List<OrderStatusDistributionResponse> getOrderStatusDistribution() {
-        long totalOrders = orderRepository.count();
-        List<OrderStatusDistributionResponse> result = new ArrayList<>();
+        List<Object[]> rows = orderRepository.countOrdersByStatusGrouped();
+        Map<OrderStatus, Long> countMap = new EnumMap<>(OrderStatus.class);
+        long totalOrders = 0;
+        for (Object[] row : rows) {
+            OrderStatus status = (OrderStatus) row[0];
+            long count = ((Number) row[1]).longValue();
+            countMap.put(status, count);
+            totalOrders += count;
+        }
 
+        List<OrderStatusDistributionResponse> result = new ArrayList<>();
         for (OrderStatus status : OrderStatus.values()) {
-            long count = orderRepository.countByStatus(status);
+            long count = countMap.getOrDefault(status, 0L);
             double percentage = totalOrders > 0
                     ? Math.round(((double) count / totalOrders * 100.0) * 10.0) / 10.0
                     : 0.0;

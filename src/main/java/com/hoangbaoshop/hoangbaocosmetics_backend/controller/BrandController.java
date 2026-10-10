@@ -18,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/brands")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 @Tag(name = "Brand Management", description = "Các API truy vấn và quản lý thương hiệu sản phẩm")
 public class BrandController {
 

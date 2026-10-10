@@ -117,6 +117,7 @@ CREATE TABLE `product_variants` (
   KEY `idx_variants_product` (`id_product`),
   KEY `idx_variants_barcode` (`barcode`),
   KEY `idx_variants_active` (`is_active`),
+  KEY `idx_variants_stock` (`is_active`, `stock_quantity`),
   CONSTRAINT `fk_variants_product` FOREIGN KEY (`id_product`) REFERENCES `products` (`id_product`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -192,6 +193,7 @@ CREATE TABLE `inventory_logs` (
   PRIMARY KEY (`id_log`),
   KEY `idx_inv_logs_variant` (`id_variant`),
   KEY `idx_inv_logs_user` (`id_user`),
+  KEY `idx_inv_logs_created` (`created_at`),
   CONSTRAINT `fk_inv_logs_variant` FOREIGN KEY (`id_variant`) REFERENCES `product_variants` (`id_variant`),
   CONSTRAINT `fk_inv_logs_user` FOREIGN KEY (`id_user`) REFERENCES `users` (`id_user`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -286,6 +288,7 @@ CREATE TABLE `orders` (
   KEY `idx_orders_staff` (`id_staff`),
   KEY `idx_orders_status` (`status`),
   KEY `idx_orders_created` (`created_at`),
+  KEY `idx_orders_status_created` (`status`, `created_at`),
   KEY `idx_orders_updated` (`updated_at`),
   CONSTRAINT `fk_orders_user` FOREIGN KEY (`id_user`) REFERENCES `users` (`id_user`),
   CONSTRAINT `fk_orders_staff` FOREIGN KEY (`id_staff`) REFERENCES `users` (`id_user`)
