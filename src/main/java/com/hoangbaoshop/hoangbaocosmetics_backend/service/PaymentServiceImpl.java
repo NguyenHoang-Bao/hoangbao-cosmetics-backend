@@ -157,7 +157,7 @@ public class PaymentServiceImpl implements PaymentService {
         // 7. Xử lý tình huống đặc biệt: Đơn hàng đã bị HỦY trước đó nhưng khách vẫn chuyển tiền
         if (order.getStatus() == OrderStatus.CANCELLED) {
             log.warn("SePay Webhook: Đơn hàng {} đã bị HỦY trước đó nhưng nhận được thanh toán: {} VNĐ (Mã GD: {}). Cần liên hệ hoàn tiền!",
-                    orderCode, transferAmount, txId);
+                    orderCode, String.format("%,.0f", transferAmount), txId);
             order.setWebhookStatus("PAID_BUT_CANCELLED");
             order.setTransactionId(txId);
             String refundNote = String.format("[CẢNH BÁO HOÀN TIỀN]: Khách chuyển %,.0f VNĐ vào đơn đã hủy trước đó (Mã GD: %s)", transferAmount, txId);
@@ -180,7 +180,7 @@ public class PaymentServiceImpl implements PaymentService {
         // 9. Kiểm tra số tiền chuyển có đủ không
         if (transferAmount < order.getTotalAmount()) {
             log.warn("SePay Webhook: Số tiền chuyển ({} VNĐ) không đủ cho đơn hàng {} (yêu cầu {} VNĐ)",
-                    transferAmount, orderCode, order.getTotalAmount());
+                    String.format("%,.0f", transferAmount), orderCode, String.format("%,.0f", order.getTotalAmount()));
             order.setWebhookStatus("UNDERPAID");
             order.setTransactionId(txId);
             String underpaidNote = String.format("[CẢNH BÁO]: Khách chuyển thiếu tiền. Nhận: %,.0f VNĐ, Cần: %,.0f VNĐ (Mã GD: %s)",
@@ -215,7 +215,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         log.info("SePay Webhook: Xác nhận thanh toán thành công cho đơn hàng {} với số tiền {} VNĐ (Mã GD: {})!",
-                orderCode, transferAmount, txId);
+                orderCode, String.format("%,.0f", transferAmount), txId);
         return true;
     }
 }

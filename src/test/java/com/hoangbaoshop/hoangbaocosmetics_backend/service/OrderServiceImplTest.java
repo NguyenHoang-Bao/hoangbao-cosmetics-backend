@@ -128,15 +128,24 @@ class OrderServiceImplTest {
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
-        orderService.createOrder("customer_user", request);
+        OrderResponse response = orderService.createOrder("customer_user", request);
 
         // Then: verify lock/decreaseStock calls were executed strictly in ascending ID order (20 then 50)
         InOrder inOrder = inOrder(productVariantRepository);
         inOrder.verify(productVariantRepository).decreaseStockQuantity(20, 1);
         inOrder.verify(productVariantRepository).decreaseStockQuantity(50, 2);
 
-        // Verify single batch load query
+        // Verify single batch load query and batch ledger save
         verify(productVariantRepository, times(1)).findAllWithProductByIdIn(anyCollection());
         verify(inventoryLogRepository, times(1)).saveAll(anyList());
+
+        // Verify P5: order code matches date-based format ORD-yyyyMMdd-XXXXXX and requires NO findByOrderCode query
+        assertNotNull(response);
+        assertNotNull(response.getOrderCode());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                response.getOrderCode().matches("^ORD-\\d{8}-[A-Z0-9]{6}$"),
+                "Mã đơn hàng phải tuân theo định dạng chuẩn ngày ORD-YYYYMMDD-XXXXXX"
+        );
+        verify(orderRepository, never()).findByOrderCode(anyString());
     }
 }
