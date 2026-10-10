@@ -33,10 +33,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.FacebookLoginRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestTemplate;
 import java.util.Map;
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -147,20 +149,42 @@ public class AuthServiceImpl implements AuthService {
                 }
             }
 
-            // 2. Trường hợp Token là Access Token (từ custom button useGoogleLogin)
+            // 2. Trường hợp Token là Access Token (Xác thực Audience qua tokeninfo chống Confused Deputy Attack)
             if (email == null && token != null) {
                 try {
-                    String googleUserInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + token;
+                    String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?access_token=" + token;
                     RestTemplate restTemplate = new RestTemplate();
                     @SuppressWarnings("unchecked")
-                    Map<String, Object> googleResponse = restTemplate.getForObject(googleUserInfoUrl, Map.class);
-                    if (googleResponse != null && googleResponse.get("sub") != null) {
-                        googleId = (String) googleResponse.get("sub");
-                        email = (String) googleResponse.get("email");
-                        fullName = (String) googleResponse.get("name");
-                        pictureUrl = (String) googleResponse.get("picture");
+                    Map<String, Object> tokenInfo = restTemplate.getForObject(tokenInfoUrl, Map.class);
+                    if (tokenInfo != null) {
+                        String tokenAud = (String) tokenInfo.get("aud");
+                        String tokenAzp = (String) tokenInfo.get("azp");
+
+                        // Chặn đứng Confused Deputy Attack: Bắt buộc Audience hoặc Authorized Party phải khớp với Google Client ID của hệ thống
+                        boolean isAudienceValid = (googleClientId != null && !googleClientId.isBlank()) &&
+                                (googleClientId.equals(tokenAud) || googleClientId.equals(tokenAzp));
+
+                        if (!isAudienceValid) {
+                            log.warn("Google Access Token bị từ chối: Token Audience '{}' / AZP '{}' không khớp với Client ID '{}'!",
+                                    tokenAud, tokenAzp, googleClientId);
+                            throw new BadRequestException("Google Token không thuộc về ứng dụng này!");
+                        }
+
+                        // Sau khi xác thực Audience an toàn, lấy thông tin chi tiết người dùng
+                        String googleUserInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + token;
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> googleResponse = restTemplate.getForObject(googleUserInfoUrl, Map.class);
+                        if (googleResponse != null && googleResponse.get("sub") != null) {
+                            googleId = (String) googleResponse.get("sub");
+                            email = (String) googleResponse.get("email");
+                            fullName = (String) googleResponse.get("name");
+                            pictureUrl = (String) googleResponse.get("picture");
+                        }
                     }
-                } catch (Exception ignored) {
+                } catch (BadRequestException bre) {
+                    throw bre;
+                } catch (Exception ex) {
+                    log.error("Lỗi khi kiểm tra và xác thực Google Access Token: {}", ex.getMessage());
                 }
             }
 

@@ -34,10 +34,17 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     int decreaseStockQuantity(@Param("idVariant") Integer idVariant, @Param("quantity") Integer quantity);
 
     /**
-     * Hoàn lại tồn kho khi đơn hàng bị hủy.
+     * Hoàn lại tồn kho khi đơn hàng bị hủy hoặc tăng tồn kho khi nhập hàng.
      */
     @Modifying(flushAutomatically = true)
     @Query("UPDATE ProductVariant v SET v.stockQuantity = v.stockQuantity + :quantity " +
            "WHERE v.idVariant = :idVariant")
     int increaseStockQuantity(@Param("idVariant") Integer idVariant, @Param("quantity") Integer quantity);
+
+    /**
+     * Cập nhật giá gốc (giá vốn nhập) của biến thể khi nhập hàng.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE ProductVariant v SET v.originalPrice = :originalPrice WHERE v.idVariant = :idVariant")
+    int updateOriginalPrice(@Param("idVariant") Integer idVariant, @Param("originalPrice") Double originalPrice);
 }

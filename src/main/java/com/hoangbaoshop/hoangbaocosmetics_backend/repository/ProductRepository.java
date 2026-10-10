@@ -19,6 +19,7 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
      */
     @EntityGraph(attributePaths = {"category", "brand"})
     @Query("SELECT p FROM Product p WHERE " +
+            "p.isActive = true AND " +
             "(:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
             "(:categoryId IS NULL OR p.category.idCategory = :categoryId) AND " +
             "(:brandId IS NULL OR p.brand.idBrand = :brandId)")

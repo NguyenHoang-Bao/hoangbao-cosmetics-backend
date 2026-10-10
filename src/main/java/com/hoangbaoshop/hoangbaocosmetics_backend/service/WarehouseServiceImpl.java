@@ -75,10 +75,9 @@ public class WarehouseServiceImpl implements WarehouseService {
 
             importReceiptDetailRepository.save(detail);
 
-            // Tự động cộng số lượng tồn kho và cập nhật giá vốn
-            variant.setStockQuantity(variant.getStockQuantity() + item.getQuantity());
-            variant.setOriginalPrice(item.getImportPrice());
-            productVariantRepository.save(variant);
+            // Tăng số lượng tồn kho nguyên tử ở cấp Database (tránh mất cập nhật khi bán hàng đồng thời)
+            productVariantRepository.increaseStockQuantity(variant.getIdVariant(), item.getQuantity());
+            productVariantRepository.updateOriginalPrice(variant.getIdVariant(), item.getImportPrice());
 
             // Ghi vết vào sổ cái biến động kho (Audit log)
             InventoryLog log = InventoryLog.builder()

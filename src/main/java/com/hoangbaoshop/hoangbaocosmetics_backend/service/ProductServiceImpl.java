@@ -2,6 +2,7 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.service;
 
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.common.PageResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.product.ProductRequest;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.product.ProductVariantRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.product.BrandResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.product.CategoryResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.product.ProductResponse;
@@ -18,7 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -126,19 +130,43 @@ public class ProductServiceImpl implements ProductService {
         product.setUsageInstruction(request.getUsageInstruction());
         product.setThumbnail(request.getThumbnail());
 
-        // Cập nhật variants
+        // Cập nhật variants (Merge in-place theo idVariant, không xóa collection để tránh vỡ FK & Unique SKU)
         if (request.getVariants() != null) {
-            product.getVariants().clear();
-            request.getVariants().forEach(v -> product.getVariants().add(
-                    ProductVariant.builder()
+            Map<Integer, ProductVariant> existingVariants = product.getVariants().stream()
+                    .filter(v -> v.getIdVariant() != null)
+                    .collect(Collectors.toMap(ProductVariant::getIdVariant, v -> v));
+
+            Set<Integer> keepVariantIds = new HashSet<>();
+
+            for (ProductVariantRequest vReq : request.getVariants()) {
+                ProductVariant variant = (vReq.getIdVariant() != null) ? existingVariants.get(vReq.getIdVariant()) : null;
+                if (variant == null) {
+                    // Thêm biến thể mới
+                    ProductVariant newVariant = ProductVariant.builder()
                             .product(product)
-                            .sku(v.getSku())
-                            .capacity(v.getCapacity())
-                            .originalPrice(v.getOriginalPrice())
-                            .price(v.getPrice())
-                            .stockQuantity(v.getStockQuantity())
-                            .build()
-            ));
+                            .sku(vReq.getSku())
+                            .capacity(vReq.getCapacity())
+                            .originalPrice(vReq.getOriginalPrice())
+                            .price(vReq.getPrice())
+                            .stockQuantity(vReq.getStockQuantity() != null ? vReq.getStockQuantity() : 0)
+                            .isActive(true)
+                            .build();
+                    product.getVariants().add(newVariant);
+                } else {
+                    // Cập nhật in-place biến thể đã có (giữ nguyên tồn kho hiện tại)
+                    variant.setSku(vReq.getSku());
+                    variant.setCapacity(vReq.getCapacity());
+                    variant.setOriginalPrice(vReq.getOriginalPrice());
+                    variant.setPrice(vReq.getPrice());
+                    variant.setIsActive(true);
+                    keepVariantIds.add(variant.getIdVariant());
+                }
+            }
+
+            // Đánh dấu soft-delete các biến thể cũ không còn nằm trong request
+            existingVariants.values().stream()
+                    .filter(v -> !keepVariantIds.contains(v.getIdVariant()))
+                    .forEach(v -> v.setIsActive(false));
         }
 
         // Cập nhật ảnh phụ
@@ -160,7 +188,12 @@ public class ProductServiceImpl implements ProductService {
     public void deleteProduct(Integer id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm với ID: " + id));
-        productRepository.delete(product);
+        // Soft delete toàn bộ sản phẩm và các biến thể để bảo toàn khóa ngoại của đơn hàng/phiếu nhập cũ
+        product.setIsActive(false);
+        if (product.getVariants() != null) {
+            product.getVariants().forEach(v -> v.setIsActive(false));
+        }
+        productRepository.save(product);
     }
 
     private ProductResponse mapToResponse(Product product) {
@@ -183,6 +216,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         List<ProductVariantResponse> variantResponses = product.getVariants().stream()
+                .filter(v -> Boolean.TRUE.equals(v.getIsActive()))
                 .map(v -> ProductVariantResponse.builder()
                         .idVariant(v.getIdVariant())
                         .sku(v.getSku())
