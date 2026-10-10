@@ -26,6 +26,6 @@ public class PaymentProperties {
     @Getter
     @Setter
     public static class Sepay {
-        private String apiKey = "SEPAY_API_KEY_SECRET";
+        private String apiKey;
     }
 }

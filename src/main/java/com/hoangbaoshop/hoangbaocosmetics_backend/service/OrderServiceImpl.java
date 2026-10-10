@@ -67,14 +67,14 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         for (OrderItemRequest item : request.getItems()) {
-            ProductVariant variant = productVariantRepository.findById(item.getIdVariant())
+            ProductVariant variant = productVariantRepository.findByIdWithProduct(item.getIdVariant())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm với ID: " + item.getIdVariant()));
 
             // Trừ tồn kho nguyên tử ở cấp Database (Chống âm kho khi nhiều người mua cùng lúc)
             int updatedRows = productVariantRepository.decreaseStockQuantity(variant.getIdVariant(), item.getQuantity());
             if (updatedRows == 0) {
                 String productName = variant.getProduct() != null ? variant.getProduct().getName() : "Sản phẩm";
-                throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho (hiện còn: " + variant.getStockQuantity() + ")");
+                throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho");
             }
 
             double itemPrice = variant.getPrice();
@@ -320,14 +320,14 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         for (OrderItemRequest item : request.getItems()) {
-            ProductVariant variant = productVariantRepository.findById(item.getIdVariant())
+            ProductVariant variant = productVariantRepository.findByIdWithProduct(item.getIdVariant())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm với ID: " + item.getIdVariant()));
 
             // Trừ tồn kho nguyên tử ở cấp Database (Chống âm kho khi nhiều người mua cùng lúc)
             int updatedRows = productVariantRepository.decreaseStockQuantity(variant.getIdVariant(), item.getQuantity());
             if (updatedRows == 0) {
                 String productName = variant.getProduct() != null ? variant.getProduct().getName() : "Sản phẩm";
-                throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho (hiện còn: " + variant.getStockQuantity() + ")");
+                throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho");
             }
 
             double itemPrice = variant.getPrice();

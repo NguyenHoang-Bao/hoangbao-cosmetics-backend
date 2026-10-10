@@ -3,9 +3,11 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.repository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.Order;
 import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus;
 import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -17,6 +19,10 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     Optional<Order> findByOrderCode(String orderCode);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.orderCode = :orderCode")
+    Optional<Order> findByOrderCodeForUpdate(@Param("orderCode") String orderCode);
 
     boolean existsByTransactionId(String transactionId);
 

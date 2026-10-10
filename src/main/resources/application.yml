@@ -4,7 +4,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/hoangbao_cosmetics_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&useSSL=false}
     username: ${DB_USERNAME:root}
-    password: "${DB_PASSWORD:NhB0359490221*}"
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -18,7 +18,7 @@ spring:
 # Cấu hình JWT cho ứng dụng
 jwt:
   # Secret key tối thiểu 256-bit (chuỗi Base64)
-  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  secret: ${JWT_SECRET}
   # Thời hạn token: 86400000 ms = 24 giờ = 1 ngày
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
@@ -30,7 +30,7 @@ payment:
     account-name: "${VIETQR_ACCOUNT_NAME:NGUYEN HOANG BAO}" # Tên chủ tài khoản
     template: "${VIETQR_TEMPLATE:compact2}" # Template hiển thị mã QR: compact, compact2, qr_only
   sepay:
-    api-key: "${SEPAY_API_KEY:SEPAY_API_KEY_SECRET}" # API Key do SePay cấp để xác thực Webhook
+    api-key: ${SEPAY_API_KEY} # API Key do SePay cấp để xác thực Webhook (Fail-closed)
 
 # Cấu hình OAuth Google
 google:

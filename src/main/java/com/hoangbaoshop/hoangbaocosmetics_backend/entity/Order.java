@@ -69,7 +69,7 @@ public class Order {
     @Column(name = "payment_method", nullable = false)
     private PaymentMethod paymentMethod;
 
-    @Column(name = "transaction_id", length = 255)
+    @Column(name = "transaction_id", length = 255, unique = true)
     private String transactionId;
 
     @Column(name = "webhook_status", length = 100)

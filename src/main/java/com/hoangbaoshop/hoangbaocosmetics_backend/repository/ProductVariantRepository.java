@@ -20,12 +20,15 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     long countByStockQuantityLessThanEqual(int threshold);
 
+    @Query("SELECT v FROM ProductVariant v JOIN FETCH v.product WHERE v.idVariant = :idVariant")
+    Optional<ProductVariant> findByIdWithProduct(@Param("idVariant") Integer idVariant);
+
     /**
      * Trừ tồn kho một cách an toàn (Atomic Update ở mức Database).
      * Chỉ trừ nếu số lượng tồn kho hiện tại (stockQuantity) >= quantity cần mua.
      * Trả về số dòng cập nhật thành công (1 nếu thành công, 0 nếu không đủ hàng).
      */
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("UPDATE ProductVariant v SET v.stockQuantity = v.stockQuantity - :quantity " +
            "WHERE v.idVariant = :idVariant AND v.stockQuantity >= :quantity")
     int decreaseStockQuantity(@Param("idVariant") Integer idVariant, @Param("quantity") Integer quantity);
@@ -33,7 +36,7 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     /**
      * Hoàn lại tồn kho khi đơn hàng bị hủy.
      */
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("UPDATE ProductVariant v SET v.stockQuantity = v.stockQuantity + :quantity " +
            "WHERE v.idVariant = :idVariant")
     int increaseStockQuantity(@Param("idVariant") Integer idVariant, @Param("quantity") Integer quantity);

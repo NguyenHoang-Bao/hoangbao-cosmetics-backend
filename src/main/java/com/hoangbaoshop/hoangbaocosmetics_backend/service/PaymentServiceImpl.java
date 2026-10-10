@@ -17,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @Service
 @RequiredArgsConstructor
@@ -92,13 +94,19 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public boolean processSepayWebhook(SepayWebhookRequest request, String authorizationHeader) {
-        // 1. Kiểm tra API Key xác thực từ SePay (nếu đã cấu hình)
-        String configuredApiKey = paymentProperties.getSepay().getApiKey();
-        if (configuredApiKey != null && !configuredApiKey.isBlank() && !"SEPAY_API_KEY_SECRET".equals(configuredApiKey)) {
-            if (authorizationHeader == null || !authorizationHeader.contains(configuredApiKey)) {
-                log.warn("SePay Webhook bị từ chối: Authorization header không hợp lệ: {}", authorizationHeader);
-                return false;
-            }
+        // 1. Kiểm tra API Key xác thực từ SePay (Fail-closed: bắt buộc phải có key hợp lệ)
+        String configuredApiKey = paymentProperties.getSepay() != null ? paymentProperties.getSepay().getApiKey() : null;
+        if (configuredApiKey == null || configuredApiKey.isBlank() || "SEPAY_API_KEY_SECRET".equals(configuredApiKey)) {
+            log.error("SePay Webhook bị từ chối: SEPAY_API_KEY chưa được cấu hình an toàn trên hệ thống (Fail-closed)");
+            return false;
+        }
+
+        String expectedHeader = "Apikey " + configuredApiKey.trim();
+        if (authorizationHeader == null || !MessageDigest.isEqual(
+                expectedHeader.getBytes(StandardCharsets.UTF_8),
+                authorizationHeader.trim().getBytes(StandardCharsets.UTF_8))) {
+            log.warn("SePay Webhook bị từ chối: Authorization header không hợp lệ");
+            return false;
         }
 
         // 2. Chỉ xử lý giao dịch tiền vào tài khoản ("in")
@@ -136,8 +144,8 @@ public class PaymentServiceImpl implements PaymentService {
             return true;
         }
 
-        // 6. Tìm đơn hàng tương ứng
-        Optional<Order> orderOpt = orderRepository.findByOrderCode(orderCode);
+        // 6. Tìm đơn hàng tương ứng với khóa bi quan (Pessimistic Write Lock để chống Race Condition)
+        Optional<Order> orderOpt = orderRepository.findByOrderCodeForUpdate(orderCode);
         if (orderOpt.isEmpty()) {
             log.warn("SePay Webhook: Không tìm thấy đơn hàng trong hệ thống với mã: {}", orderCode);
             return false;
@@ -148,14 +156,18 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 7. Xử lý tình huống đặc biệt: Đơn hàng đã bị HỦY trước đó nhưng khách vẫn chuyển tiền
         if (order.getStatus() == OrderStatus.CANCELLED) {
-            log.warn("SePay Webhook: Đơn hàng {} đã bị HỦY trước đó nhưng nhận được thanh toán: %,.0f VNĐ (Mã GD: {}). Cần liên hệ hoàn tiền!",
+            log.warn("SePay Webhook: Đơn hàng {} đã bị HỦY trước đó nhưng nhận được thanh toán: {} VNĐ (Mã GD: {}). Cần liên hệ hoàn tiền!",
                     orderCode, transferAmount, txId);
             order.setWebhookStatus("PAID_BUT_CANCELLED");
             order.setTransactionId(txId);
             String refundNote = String.format("[CẢNH BÁO HOÀN TIỀN]: Khách chuyển %,.0f VNĐ vào đơn đã hủy trước đó (Mã GD: %s)", transferAmount, txId);
             String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
             order.setNote(currentNote + refundNote);
-            orderRepository.save(order);
+            try {
+                orderRepository.saveAndFlush(order);
+            } catch (DataIntegrityViolationException dup) {
+                log.info("SePay Webhook (Idempotent): Giao dịch {} đã được ghi nhận bởi tiến trình khác.", txId);
+            }
             return true;
         }
 
@@ -167,15 +179,20 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 9. Kiểm tra số tiền chuyển có đủ không
         if (transferAmount < order.getTotalAmount()) {
-            log.warn("SePay Webhook: Số tiền chuyển (%,.0f VNĐ) không đủ cho đơn hàng {} (yêu cầu %,.0f VNĐ)",
+            log.warn("SePay Webhook: Số tiền chuyển ({} VNĐ) không đủ cho đơn hàng {} (yêu cầu {} VNĐ)",
                     transferAmount, orderCode, order.getTotalAmount());
             order.setWebhookStatus("UNDERPAID");
+            order.setTransactionId(txId);
             String underpaidNote = String.format("[CẢNH BÁO]: Khách chuyển thiếu tiền. Nhận: %,.0f VNĐ, Cần: %,.0f VNĐ (Mã GD: %s)",
                     transferAmount, order.getTotalAmount(), txId);
             String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
             order.setNote(currentNote + underpaidNote);
-            orderRepository.save(order);
-            return false;
+            try {
+                orderRepository.saveAndFlush(order);
+            } catch (DataIntegrityViolationException dup) {
+                log.info("SePay Webhook (Idempotent): Giao dịch {} đã được ghi nhận bởi tiến trình khác.", txId);
+            }
+            return true;
         }
 
         // 10. Cập nhật đơn hàng sang PROCESSING và ghi nhận giao dịch thành công
@@ -190,8 +207,14 @@ public class PaymentServiceImpl implements PaymentService {
         String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
         order.setNote(currentNote + successNote);
 
-        orderRepository.save(order);
-        log.info("SePay Webhook: Xác nhận thanh toán thành công cho đơn hàng {} với số tiền %,.0f VNĐ (Mã GD: {})!",
+        try {
+            orderRepository.saveAndFlush(order);
+        } catch (DataIntegrityViolationException dup) {
+            log.info("SePay Webhook (Idempotent): Giao dịch {} đã được ghi nhận bởi tiến trình khác.", txId);
+            return true;
+        }
+
+        log.info("SePay Webhook: Xác nhận thanh toán thành công cho đơn hàng {} với số tiền {} VNĐ (Mã GD: {})!",
                 orderCode, transferAmount, txId);
         return true;
     }

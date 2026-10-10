@@ -281,6 +281,7 @@ CREATE TABLE `orders` (
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_order`),
+  UNIQUE KEY `uk_orders_transaction` (`transaction_id`),
   KEY `idx_orders_user` (`id_user`),
   KEY `idx_orders_staff` (`id_staff`),
   KEY `idx_orders_status` (`status`),
