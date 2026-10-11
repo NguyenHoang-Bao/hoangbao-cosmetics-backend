@@ -3,6 +3,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "import_receipt_details")
 @Getter
@@ -37,8 +39,8 @@ public class ImportReceiptDetail {
     @Column(name = "central_quantity")
     private Integer centralQuantity = 0;
 
-    @Column(name = "import_price", nullable = false)
-    private Double importPrice;
+    @Column(name = "import_price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal importPrice;
 
     @Column(name = "batch_number", length = 50)
     private String batchNumber;

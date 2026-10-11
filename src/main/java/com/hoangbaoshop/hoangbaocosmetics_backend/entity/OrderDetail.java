@@ -3,6 +3,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "order_details")
 @Getter
@@ -28,8 +30,8 @@ public class OrderDetail {
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @Column(name = "price", nullable = false)
-    private Double price;
+    @Column(name = "price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal price;
 
     @Builder.Default
     @Column(name = "is_reviewed")

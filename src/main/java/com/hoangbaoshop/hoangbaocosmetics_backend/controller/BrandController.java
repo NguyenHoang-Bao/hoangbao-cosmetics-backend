@@ -23,18 +23,21 @@ public class BrandController {
 
     private final BrandService brandService;
 
+    // [GET] lấy danh sách tất cả thương hiệu
     @GetMapping
     @Operation(summary = "Lấy danh sách tất cả thương hiệu (Public)", description = "Dành cho Frontend hiển thị carousel thương hiệu và bộ lọc")
     public ResponseEntity<ApiResponse<List<BrandResponse>>> getAllBrands() {
         return ResponseEntity.ok(ApiResponse.success(brandService.getAllBrands()));
     }
 
+    // [GET] lấy chi tiết thương hiệu by id
     @GetMapping("/{id}")
     @Operation(summary = "Lấy chi tiết thương hiệu theo ID (Public)")
     public ResponseEntity<ApiResponse<BrandResponse>> getBrandById(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success(brandService.getBrandById(id)));
     }
 
+    // [POST] thêm thương hiệu mới (Admin)
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Thêm thương hiệu mới (Admin)")
@@ -43,6 +46,7 @@ public class BrandController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "Tạo thương hiệu thành công"));
     }
 
+    // [PUT] cập nhật thương hiệu (Admin)
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật thương hiệu (Admin)")
@@ -53,6 +57,7 @@ public class BrandController {
         return ResponseEntity.ok(ApiResponse.success(brandService.updateBrand(id, request), "Cập nhật thương hiệu thành công"));
     }
 
+    // [DELETE] xóa thương hiệu (Admin)
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Xóa thương hiệu (Admin)")

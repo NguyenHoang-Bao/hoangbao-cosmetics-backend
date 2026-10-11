@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface BrandRepository extends JpaRepository<Brand, Integer> {
+    // kiểm tra thương hiệu đã tồn tại theo tên
     boolean existsByName(String name);
 }

@@ -30,7 +30,7 @@ public class WarehouseController {
 
     private final WarehouseService warehouseService;
 
-    // 1. Lập phiếu nhập kho mới
+    // [POST] lập phiếu nhập kho mới
     @PostMapping("/import-receipts")
     public ResponseEntity<ApiResponse<ImportReceiptResponse>> createImportReceipt(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -41,14 +41,14 @@ public class WarehouseController {
                 .body(ApiResponse.success(response, "Lập phiếu nhập kho thành công!"));
     }
 
-    // 2. Lấy chi tiết phiếu nhập kho
+    // [GET] lấy chi tiết phiếu nhập kho by id
     @GetMapping("/import-receipts/{id}")
     public ResponseEntity<ApiResponse<ImportReceiptResponse>> getImportReceiptById(@PathVariable Integer id) {
         ImportReceiptResponse response = warehouseService.getImportReceiptById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 3. Lấy danh sách phiếu nhập kho phân trang & lọc theo nhà cung cấp, ngày
+    // [GET] lấy danh sách phiếu nhập kho phân trang và lọc theo nhà cung cấp, ngày
     @GetMapping("/import-receipts")
     public ResponseEntity<ApiResponse<PageResponse<ImportReceiptResponse>>> getAllImportReceipts(
             @RequestParam(required = false) Integer supplierId,
@@ -65,7 +65,7 @@ public class WarehouseController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 4. Tra cứu Sổ cái biến động kho (Audit log)
+    // [GET] tra cứu sổ cái biến động kho (Audit log) có phân trang và bộ lọc
     @GetMapping("/inventory-logs")
     public ResponseEntity<ApiResponse<PageResponse<InventoryLogResponse>>> getInventoryLogs(
             @RequestParam(required = false) Integer variantId,

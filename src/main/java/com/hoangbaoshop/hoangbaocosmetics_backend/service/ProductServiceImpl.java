@@ -33,6 +33,7 @@ public class ProductServiceImpl implements ProductService {
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
 
+    // lấy danh sách sản phẩm phân trang và tìm kiếm theo keyword, category, brand
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProductResponse> getAllProducts(String keyword, Integer categoryId, Integer brandId, Pageable pageable) {
@@ -51,6 +52,7 @@ public class ProductServiceImpl implements ProductService {
                 .build();
     }
 
+    // lấy 1 sản phẩm by id
     @Override
     @Transactional(readOnly = true)
     public ProductResponse getProductById(Integer id) {
@@ -59,6 +61,7 @@ public class ProductServiceImpl implements ProductService {
         return mapToResponse(product);
     }
 
+    // tạo sản phẩm mới kèm biến thể và hình ảnh
     @Override
     @Transactional
     public ProductResponse createProduct(ProductRequest request) {
@@ -109,6 +112,7 @@ public class ProductServiceImpl implements ProductService {
         return mapToResponse(savedProduct);
     }
 
+    // cập nhật thông tin sản phẩm và biến thể
     @Override
     @Transactional
     public ProductResponse updateProduct(Integer id, ProductRequest request) {
@@ -183,6 +187,7 @@ public class ProductServiceImpl implements ProductService {
         return mapToResponse(productRepository.save(product));
     }
 
+    // xóa mềm sản phẩm (set isActive = false)
     @Override
     @Transactional
     public void deleteProduct(Integer id) {
@@ -196,6 +201,7 @@ public class ProductServiceImpl implements ProductService {
         productRepository.save(product);
     }
 
+    // hàm chung map entity sang dto
     private ProductResponse mapToResponse(Product product) {
         CategoryResponse categoryResponse = null;
         if (product.getCategory() != null) {

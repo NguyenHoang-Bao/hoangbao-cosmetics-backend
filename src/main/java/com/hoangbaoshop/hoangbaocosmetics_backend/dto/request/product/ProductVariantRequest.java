@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,11 +25,11 @@ public class ProductVariantRequest {
 
     @NotNull(message = "Giá gốc không được để trống")
     @Positive(message = "Giá gốc phải lớn hơn 0")
-    private Double originalPrice;
+    private BigDecimal originalPrice;
 
     @NotNull(message = "Giá bán không được để trống")
     @Positive(message = "Giá bán phải lớn hơn 0")
-    private Double price;
+    private BigDecimal price;
 
     @NotNull(message = "Số lượng tồn kho không được để trống")
     @PositiveOrZero(message = "Số lượng tồn kho phải >= 0")

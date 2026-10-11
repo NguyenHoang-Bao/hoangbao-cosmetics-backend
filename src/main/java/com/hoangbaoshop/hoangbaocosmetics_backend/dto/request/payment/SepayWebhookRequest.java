@@ -2,6 +2,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.payment;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,9 +17,9 @@ public class SepayWebhookRequest {
     private String accountNumber;
     private String code;
     private String content;
-    private String transferType; // "in" là nhận tiền, "out" là chuyển đi
-    private Double transferAmount;
-    private Double accumulated;
+    private String transferType; // in nhận, out chuyển
+    private BigDecimal transferAmount;
+    private BigDecimal accumulated;
     private String subAccount;
     private String referenceCode;
     private String description;

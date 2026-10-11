@@ -23,6 +23,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    // [POST] đặt hàng online (người dùng đăng nhập hoặc khách vãng lai)
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -34,6 +35,7 @@ public class OrderController {
                 .body(ApiResponse.success(response, "Đặt hàng thành công!"));
     }
 
+    // [GET] lấy danh sách đơn hàng của người dùng hiện tại
     @GetMapping("/my-orders")
     public ResponseEntity<ApiResponse<PageResponse<OrderResponse>>> getMyOrders(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -48,6 +50,7 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    // [GET] tra cứu đơn hàng theo mã đơn (kèm số điện thoại bảo mật nếu là khách)
     @GetMapping("/{orderCode}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderByCode(
             @PathVariable String orderCode,

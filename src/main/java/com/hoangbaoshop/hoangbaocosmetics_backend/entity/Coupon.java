@@ -4,6 +4,8 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.enums.DiscountType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -30,15 +32,15 @@ public class Coupon {
     @Column(name = "discount_type", nullable = false)
     private DiscountType discountType;
 
-    @Column(name = "discount_value", nullable = false)
-    private Double discountValue;
+    @Column(name = "discount_value", nullable = false, precision = 15, scale = 2)
+    private BigDecimal discountValue;
 
     @Builder.Default
-    @Column(name = "min_order_amount")
-    private Double minOrderAmount = 0.0;
+    @Column(name = "min_order_amount", precision = 15, scale = 2)
+    private BigDecimal minOrderAmount = BigDecimal.ZERO;
 
-    @Column(name = "max_discount_amount")
-    private Double maxDiscountAmount;
+    @Column(name = "max_discount_amount", precision = 15, scale = 2)
+    private BigDecimal maxDiscountAmount;
 
     @Column(name = "usage_limit")
     private Integer usageLimit;
@@ -60,6 +62,8 @@ public class Coupon {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    //Lưu giờ now từ java ngon hơn để default time dưới db tại hiệu năng
+    //đồng bộ bộ nhớ tạm đỡ tốn query
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {

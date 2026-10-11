@@ -25,7 +25,7 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
-    // 1. Viết đánh giá cho sản phẩm đã mua (Yêu cầu đăng nhập)
+    // [POST] viết đánh giá cho sản phẩm đã mua
     @PostMapping
     public ResponseEntity<ApiResponse<ReviewResponse>> createReview(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -36,7 +36,7 @@ public class ReviewController {
                 .body(ApiResponse.success(response, "Đánh giá sản phẩm thành công!"));
     }
 
-    // 2. Lấy danh sách đánh giá của một sản phẩm kèm điểm trung bình (Công khai)
+    // [GET] lấy danh sách đánh giá của sản phẩm kèm điểm trung bình (Public)
     @GetMapping("/products/{productId}")
     public ResponseEntity<ApiResponse<ProductReviewSummaryResponse>> getProductReviews(
             @PathVariable Integer productId,
@@ -51,7 +51,7 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 3. Lấy danh sách đánh giá của chính người dùng đăng nhập
+    // [GET] lấy danh sách đánh giá của người dùng hiện tại
     @GetMapping("/my-reviews")
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getMyReviews(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -66,7 +66,7 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 4. Admin / Staff xóa đánh giá vi phạm
+    // [DELETE] xóa đánh giá vi phạm (Admin / Staff)
     @DeleteMapping("/admin/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<Void>> deleteReviewAdmin(@PathVariable Integer id) {

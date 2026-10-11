@@ -14,9 +14,7 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
 
-    /**
-     * Tìm kiếm và lọc sản phẩm có phân trang (Eager fetch Category & Brand chống N+1 query).
-     */
+    // tìm kiếm và lọc sản phẩm có phân trang (Eager fetch Category & Brand chống N+1)
     @EntityGraph(attributePaths = {"category", "brand"})
     @Query("SELECT p FROM Product p WHERE " +
             "p.isActive = true AND " +
@@ -28,11 +26,14 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
                                  @Param("brandId") Integer brandId,
                                  Pageable pageable);
 
+    // lấy chi tiết sản phẩm theo id (Eager fetch Category & Brand)
     @Override
     @EntityGraph(attributePaths = {"category", "brand"})
     Optional<Product> findById(Integer id);
 
+    // kiểm tra có sản phẩm nào thuộc danh mục hay không
     boolean existsByCategory_IdCategory(Integer idCategory);
 
+    // kiểm tra có sản phẩm nào thuộc thương hiệu hay không
     boolean existsByBrand_IdBrand(Integer idBrand);
 }

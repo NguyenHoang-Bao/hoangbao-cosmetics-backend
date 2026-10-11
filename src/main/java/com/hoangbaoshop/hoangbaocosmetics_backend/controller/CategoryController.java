@@ -23,18 +23,21 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
+    // [GET] lấy danh sách tất cả danh mục
     @GetMapping
     @Operation(summary = "Lấy danh sách tất cả danh mục (Public)", description = "Dành cho Frontend hiển thị menu, navbar và bộ lọc danh mục")
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> getAllCategories() {
         return ResponseEntity.ok(ApiResponse.success(categoryService.getAllCategories()));
     }
 
+    // [GET] lấy chi tiết danh mục by id
     @GetMapping("/{id}")
     @Operation(summary = "Lấy chi tiết danh mục theo ID (Public)")
     public ResponseEntity<ApiResponse<CategoryResponse>> getCategoryById(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.success(categoryService.getCategoryById(id)));
     }
 
+    // [POST] thêm danh mục mới (Admin)
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Thêm danh mục mới (Admin)")
@@ -43,6 +46,7 @@ public class CategoryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "Tạo danh mục thành công"));
     }
 
+    // [PUT] cập nhật thông tin danh mục (Admin)
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật thông tin danh mục (Admin)")
@@ -53,6 +57,7 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.success(categoryService.updateCategory(id, request), "Cập nhật danh mục thành công"));
     }
 
+    // [DELETE] xóa danh mục (Admin)
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Xóa danh mục (Admin)")

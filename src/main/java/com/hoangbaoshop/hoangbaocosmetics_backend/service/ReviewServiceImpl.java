@@ -30,6 +30,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
 
+    // viết đánh giá sản phẩm (kiểm tra đã mua & đơn đã giao thành công mới cho đánh giá)
     @Override
     @Transactional
     public ReviewResponse createReview(String username, ReviewRequest request) {
@@ -82,6 +83,7 @@ public class ReviewServiceImpl implements ReviewService {
         return mapToReviewResponse(savedReview);
     }
 
+    // lấy đánh giá của sản phẩm (kèm tính điểm trung bình sao + phân trang)
     @Override
     @Transactional(readOnly = true)
     public ProductReviewSummaryResponse getProductReviews(Integer productId, Pageable pageable) {
@@ -115,6 +117,7 @@ public class ReviewServiceImpl implements ReviewService {
                 .build();
     }
 
+    // lấy lịch sử đánh giá của tôi (có phân trang)
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ReviewResponse> getMyReviews(String username, Pageable pageable) {
@@ -133,6 +136,7 @@ public class ReviewServiceImpl implements ReviewService {
                 .build();
     }
 
+    // admin xóa đánh giá xấu / vi phạm
     @Override
     @Transactional
     public void deleteReviewAdmin(Integer reviewId) {
@@ -141,6 +145,7 @@ public class ReviewServiceImpl implements ReviewService {
         reviewRepository.delete(review);
     }
 
+    // hàm chung map entity sang dto
     private ReviewResponse mapToReviewResponse(Review review) {
         User user = review.getUser();
         Product product = review.getProduct();

@@ -3,6 +3,7 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,8 +33,8 @@ public class ImportReceipt {
     @Column(name = "import_date")
     private LocalDateTime importDate;
 
-    @Column(name = "total_cost", nullable = false)
-    private Double totalCost;
+    @Column(name = "total_cost", nullable = false, precision = 15, scale = 2)
+    private BigDecimal totalCost;
 
     @Column(name = "note", length = 255)
     private String note;
@@ -42,6 +43,8 @@ public class ImportReceipt {
     @OneToMany(mappedBy = "importReceipt", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ImportReceiptDetail> details = new ArrayList<>();
 
+    //Lưu giờ now từ java ngon hơn để default time dưới db tại hiệu năng
+    //đồng bộ bộ nhớ tạm đỡ tốn query
     @PrePersist
     public void prePersist() {
         if (this.importDate == null) {

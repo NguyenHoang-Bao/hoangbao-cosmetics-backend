@@ -6,6 +6,7 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,22 +49,22 @@ public class Order {
     @Column(name = "delivery_address", length = 500)
     private String deliveryAddress;
 
-    @Column(name = "total_product_price", nullable = false)
-    private Double totalProductPrice;
+    @Column(name = "total_product_price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal totalProductPrice;
 
     @Builder.Default
-    @Column(name = "discount_amount")
-    private Double discountAmount = 0.0;
+    @Column(name = "discount_amount", precision = 15, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
 
     @Column(name = "coupon_code", length = 50)
     private String couponCode;
 
     @Builder.Default
-    @Column(name = "shipping_fee")
-    private Double shippingFee = 0.0;
+    @Column(name = "shipping_fee", precision = 15, scale = 2)
+    private BigDecimal shippingFee = BigDecimal.ZERO;
 
-    @Column(name = "total_amount", nullable = false)
-    private Double totalAmount;
+    @Column(name = "total_amount", nullable = false, precision = 15, scale = 2)
+    private BigDecimal totalAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false)
@@ -92,6 +93,7 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderDetail> orderDetails = new ArrayList<>();
 
+    //Lấy thời gian thực trước mới lưu xuống db
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
@@ -102,11 +104,14 @@ public class Order {
         }
     }
 
+    //cập nhật lại giờ khi đơn hàng thay đổi
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 
+    //viết add ở đây thay vì service vì nó chôngs lặp code ở service
+    //OrderDetail bắt buộc gắn với Order, xài hàm này link để tránh null DB
     public void addOrderDetail(OrderDetail detail) {
         if (this.orderDetails == null) {
             this.orderDetails = new ArrayList<>();

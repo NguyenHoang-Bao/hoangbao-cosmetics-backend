@@ -19,21 +19,21 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    // 1. Sinh mã VietQR cho đơn hàng (Khách xem mã QR để chuyển khoản)
+    // [GET] sinh mã VietQR cho đơn hàng (chuyển khoản ngân hàng)
     @GetMapping("/vietqr/{orderCode}")
     public ResponseEntity<ApiResponse<PaymentQrResponse>> getVietQr(@PathVariable String orderCode) {
         PaymentQrResponse response = paymentService.generateVietQr(orderCode);
         return ResponseEntity.ok(ApiResponse.success(response, "Lấy thông tin mã VietQR thành công!"));
     }
 
-    // 2. Kiểm tra trạng thái thanh toán (Frontend polling 2s/lần để biết khi nào khách đã chuyển tiền)
+    // [GET] kiểm tra trạng thái thanh toán (polling)
     @GetMapping("/check-status/{orderCode}")
     public ResponseEntity<ApiResponse<PaymentStatusResponse>> checkStatus(@PathVariable String orderCode) {
         PaymentStatusResponse response = paymentService.checkPaymentStatus(orderCode);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 3. Webhook nhận biến động số dư từ SePay
+    // [POST] webhook nhận thông báo biến động số dư từ SePay
     @PostMapping("/sepay-webhook")
     public ResponseEntity<Map<String, Object>> handleSepayWebhook(
             @RequestBody SepayWebhookRequest request,

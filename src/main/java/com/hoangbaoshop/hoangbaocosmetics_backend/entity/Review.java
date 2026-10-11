@@ -40,6 +40,7 @@ public class Review {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    //lấy now hiện tại lưu xuống db
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {

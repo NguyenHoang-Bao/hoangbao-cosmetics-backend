@@ -21,6 +21,7 @@ public class FavoriteProductId implements Serializable {
     @Column(name = "id_product")
     private Integer idProduct;
 
+    //so sánh idUser và idProduct để thao tác
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -29,6 +30,7 @@ public class FavoriteProductId implements Serializable {
         return Objects.equals(idUser, that.idUser) && Objects.equals(idProduct, that.idProduct);
     }
 
+    //hash để tìm nhanh
     @Override
     public int hashCode() {
         return Objects.hash(idUser, idProduct);

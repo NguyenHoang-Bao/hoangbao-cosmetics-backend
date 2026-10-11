@@ -4,6 +4,8 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus;
 import com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,7 +16,7 @@ public class PaymentStatusResponse {
     private String orderCode;
     private boolean isPaid;
     private OrderStatus status;
-    private Double totalAmount;
+    private BigDecimal totalAmount;
     private String transactionId;
     private PaymentMethod paymentMethod;
 }

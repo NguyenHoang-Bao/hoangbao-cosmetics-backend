@@ -1,5 +1,6 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.entity;
 
+import java.math.BigDecimal;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,11 +31,11 @@ public class ProductVariant {
     @Column(name = "capacity", nullable = false, length = 50)
     private String capacity;
 
-    @Column(name = "original_price", nullable = false)
-    private Double originalPrice;
+    @Column(name = "original_price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal originalPrice;
 
-    @Column(name = "price", nullable = false)
-    private Double price;
+    @Column(name = "price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal price;
 
     @Builder.Default
     @Column(name = "stock_quantity")

@@ -41,6 +41,8 @@ public class Feedback {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    //Lưu giờ now từ java ngon hơn để default time dưới db tại hiệu năng
+    //đồng bộ bộ nhớ tạm đỡ tốn query
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {

@@ -14,14 +14,16 @@ import java.time.LocalDateTime;
 
 public interface OrderService {
 
-    // Khách hàng / Public
+    // tạo đơn hàng online (cho cả user đăng nhập hoặc khách vãng lai)
     OrderResponse createOrder(String username, CreateOrderRequest request);
 
+    // lấy danh sách đơn hàng của tôi (user đăng nhập)
     PageResponse<OrderResponse> getMyOrders(String username, Pageable pageable);
 
+    // tra cứu đơn hàng theo mã đơn (kèm sđt bảo mật nếu là khách)
     OrderResponse getOrderByCode(String orderCode, String phoneNumber, String currentUsername);
 
-    // Admin / Staff
+    // lấy danh sách đơn hàng cho admin/staff kèm bộ lọc và phân trang
     PageResponse<OrderResponse> getAllOrdersAdmin(
             OrderStatus status,
             OrderType orderType,
@@ -31,11 +33,15 @@ public interface OrderService {
             Pageable pageable
     );
 
+    // lấy chi tiết đơn hàng by id cho admin/staff
     OrderResponse getOrderDetailAdmin(Integer orderId);
 
+    // cập nhật trạng thái đơn hàng (duyệt, giao hàng, hoàn thành...)
     OrderResponse updateOrderStatus(Integer orderId, UpdateOrderStatusRequest request, String staffUsername);
 
+    // hủy đơn hàng từ phía admin/staff
     OrderResponse cancelOrderAdmin(Integer orderId, CancelOrderRequest request, String staffUsername);
 
+    // tạo đơn hàng bán tại quầy (POS) cho nhân viên
     OrderResponse createPosOrder(CreatePosOrderRequest request, String staffUsername);
 }

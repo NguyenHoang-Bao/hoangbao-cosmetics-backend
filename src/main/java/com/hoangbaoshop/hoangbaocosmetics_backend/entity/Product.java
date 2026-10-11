@@ -67,6 +67,7 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images = new ArrayList<>();
 
+    //lưu nowtime trước ở java để tối ưu hiệu năng
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
@@ -77,6 +78,7 @@ public class Product {
         }
     }
 
+    //thay đổi thời gian nếu update
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();

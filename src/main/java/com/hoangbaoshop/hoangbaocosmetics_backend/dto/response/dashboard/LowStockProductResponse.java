@@ -2,6 +2,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.dashboard;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,5 +18,5 @@ public class LowStockProductResponse {
     private String productName;
     private String thumbnail;
     private Integer stockQuantity;
-    private Double price;
+    private BigDecimal price;
 }

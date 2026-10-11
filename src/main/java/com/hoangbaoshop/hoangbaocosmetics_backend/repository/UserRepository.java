@@ -8,18 +8,20 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
-    // Tìm user bằng username khi gõ vào form đăng nhập
+    // tìm user bằng username khi đăng nhập
     Optional<User> findByUsername(String username);
 
-    // Tìm user bằng email (dùng cho đăng nhập Google OAuth và quên mật khẩu)
+    // tìm user bằng email (dùng cho Google OAuth và quên mật khẩu)
     Optional<User> findByEmail(String email);
-    // Tìm khách hàng bằng số điện thoại để tích điểm & POS
+
+    // tìm khách hàng bằng số điện thoại để tích điểm & POS
     Optional<User> findByPhoneNumber(String phoneNumber);
 
-    // check trùng khi đăng ký
+    // kiểm tra trùng lặp thông tin khi đăng ký
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
     boolean existsByPhoneNumber(String phoneNumber);
 
+    // đếm số lượng người dùng theo vai trò (role)
     long countByRolesNameRole(String nameRole);
 }

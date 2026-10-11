@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -27,16 +28,17 @@ public class DashboardServiceImpl implements DashboardService {
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
 
+    // tổng quan dashboard: đếm tổng doanh thu, đơn hàng, khách hàng, hàng sắp hết
     @Override
     @Transactional(readOnly = true)
     public DashboardOverviewResponse getDashboardOverview() {
-        Double totalRev = orderRepository.sumTotalRevenue();
-        double totalRevenue = totalRev != null ? totalRev : 0.0;
+        BigDecimal totalRev = orderRepository.sumTotalRevenue();
+        BigDecimal totalRevenue = totalRev != null ? totalRev : BigDecimal.ZERO;
 
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
-        Double todayRev = orderRepository.sumRevenueBetween(startOfDay, endOfDay);
-        double todayRevenue = todayRev != null ? todayRev : 0.0;
+        BigDecimal todayRev = orderRepository.sumRevenueBetween(startOfDay, endOfDay);
+        BigDecimal todayRevenue = todayRev != null ? todayRev : BigDecimal.ZERO;
 
         long totalOrders = orderRepository.count();
         long pendingOrders = orderRepository.countByStatus(OrderStatus.PENDING);
@@ -55,6 +57,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .build();
     }
 
+    // biểu đồ doanh thu theo 12 tháng (tự bù tháng doanh thu 0 để biểu đồ không bị gãy)
     @Override
     @Transactional(readOnly = true)
     public List<RevenueChartResponse> getMonthlyRevenue(int year) {
@@ -66,7 +69,7 @@ public class DashboardServiceImpl implements DashboardService {
             String label = String.format("Tháng %02d/%d", m, targetYear);
             monthMap.put(m, RevenueChartResponse.builder()
                     .period(label)
-                    .revenue(0.0)
+                    .revenue(BigDecimal.ZERO)
                     .orderCount(0L)
                     .build());
         }
@@ -76,7 +79,7 @@ public class DashboardServiceImpl implements DashboardService {
         List<Object[]> rows = orderRepository.getMonthlyRevenueBetween(startDate, endDate);
         for (Object[] row : rows) {
             int month = ((Number) row[0]).intValue();
-            double rev = ((Number) row[1]).doubleValue();
+            BigDecimal rev = row[1] != null ? BigDecimal.valueOf(((Number) row[1]).doubleValue()) : BigDecimal.ZERO;
             long count = ((Number) row[2]).longValue();
 
             if (monthMap.containsKey(month)) {
@@ -88,6 +91,7 @@ public class DashboardServiceImpl implements DashboardService {
         return new ArrayList<>(monthMap.values());
     }
 
+    // biểu đồ doanh thu theo ngày (mặc định 30 ngày gần nhất)
     @Override
     @Transactional(readOnly = true)
     public List<RevenueChartResponse> getDailyRevenue(LocalDate startDate, LocalDate endDate) {
@@ -107,7 +111,7 @@ public class DashboardServiceImpl implements DashboardService {
             String key = current.toString();
             dateMap.put(key, RevenueChartResponse.builder()
                     .period(key)
-                    .revenue(0.0)
+                    .revenue(BigDecimal.ZERO)
                     .orderCount(0L)
                     .build());
             current = current.plusDays(1);
@@ -119,7 +123,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         for (Object[] row : rows) {
             String dateKey = row[0].toString();
-            double rev = ((Number) row[1]).doubleValue();
+            BigDecimal rev = row[1] != null ? BigDecimal.valueOf(((Number) row[1]).doubleValue()) : BigDecimal.ZERO;
             long count = ((Number) row[2]).longValue();
 
             if (dateMap.containsKey(dateKey)) {
@@ -131,6 +135,7 @@ public class DashboardServiceImpl implements DashboardService {
         return new ArrayList<>(dateMap.values());
     }
 
+    // thống kê tỷ lệ phần trăm các trạng thái đơn hàng (vẽ biểu đồ tròn)
     @Override
     @Transactional(readOnly = true)
     public List<OrderStatusDistributionResponse> getOrderStatusDistribution() {
@@ -161,6 +166,7 @@ public class DashboardServiceImpl implements DashboardService {
         return result;
     }
 
+    // lấy top sản phẩm bán chạy nhất theo số lượng và doanh thu
     @Override
     @Transactional(readOnly = true)
     public List<TopSellingProductResponse> getTopSellingProducts(int limit) {
@@ -174,7 +180,7 @@ public class DashboardServiceImpl implements DashboardService {
             String thumbnail = (String) row[2];
             String categoryName = (String) row[3];
             Long totalSold = ((Number) row[4]).longValue();
-            Double totalRev = ((Number) row[5]).doubleValue();
+            BigDecimal totalRev = row[5] != null ? BigDecimal.valueOf(((Number) row[5]).doubleValue()) : BigDecimal.ZERO;
 
             return TopSellingProductResponse.builder()
                     .idProduct(idProduct)
@@ -187,6 +193,7 @@ public class DashboardServiceImpl implements DashboardService {
         }).collect(Collectors.toList());
     }
 
+    // cảnh báo các biến thể sản phẩm có số lượng tồn kho <= 10 (sắp hết hàng)
     @Override
     @Transactional(readOnly = true)
     public List<LowStockProductResponse> getLowStockProducts(int threshold) {

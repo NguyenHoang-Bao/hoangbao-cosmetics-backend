@@ -12,9 +12,12 @@ import java.util.Optional;
 @Repository
 public interface FavoriteProductRepository extends JpaRepository<FavoriteProduct, FavoriteProductId> {
 
+    // lấy danh sách sản phẩm yêu thích của user có phân trang
     Page<FavoriteProduct> findByUserUsername(String username, Pageable pageable);
 
+    // kiểm tra user đã yêu thích sản phẩm chưa
     boolean existsByIdIdUserAndIdIdProduct(Integer idUser, Integer idProduct);
 
+    // tìm bản ghi yêu thích theo idUser và idProduct
     Optional<FavoriteProduct> findByIdIdUserAndIdIdProduct(Integer idUser, Integer idProduct);
 }

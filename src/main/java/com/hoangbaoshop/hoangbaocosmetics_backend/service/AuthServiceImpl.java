@@ -43,17 +43,19 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder
+            passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
 
     @Value("${google.client-id}")
     private String googleClientId;
 
+    // đăng ký tài khoản mới
     @Override
     @Transactional
     public void register(RegisterRequest request) {
-        // 1. Kiểm tra dữ liệu đã tồn tại chưa
+        //kiểm tra tài khoản tồn tại chưa
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new BadRequestException("Tên đăng nhập đã tồn tại!");
         }
@@ -64,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Số điện thoại đã được sử dụng!");
         }
 
-        // 2. Tạo đối tượng User mới và mã hóa mật khẩu
+        // tạo user mới
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -74,37 +76,38 @@ public class AuthServiceImpl implements AuthService {
                 .enabled(true)
                 .build();
 
-        // 3. Gán Role mặc định là CUSTOMER cho người dùng mới đăng ký
+        // mặc định đăng ký tài khoản là customer
         Set<Role> roles = new HashSet<>();
         Role userRole = roleRepository.findByNameRole("CUSTOMER")
                 .orElseThrow(() -> new ResourceNotFoundException("Lỗi: Không tìm thấy Role CUSTOMER trong Database."));
         roles.add(userRole);
         user.setRoles(roles);
 
-        // 4. Lưu vào Database
+        // save database
         userRepository.save(user);
     }
 
+    // đăng nhập bằng username / password
     @Override
     public AuthResponse login(LoginRequest request) {
-        // 1. Xác thực tài khoản qua Spring Security
+        // Xác thực tài khoản qua Spring Security
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
-        // 2. Đặt thông tin xác thực vào Security Context
+        // Đặt thông tin xác thực vào Security Context
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // 3. Sinh ra chuỗi JWT Token
+        // Sinh ra chuỗi JWT Token
         String jwt = jwtUtils.generateJwtToken(authentication);
 
-        // 4. Lấy thông tin user hiện tại
+        // Lấy thông tin user hiện tại
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Set<String> roles = userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toSet());
 
-        // 5. Trả về Response cho Frontend
+        // Trả về Response cho Frontend
         return AuthResponse.builder()
                 .accessToken(jwt)
                 .tokenType("Bearer")
@@ -117,6 +120,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    // đăng nhập bằng Google OAuth
     @Transactional
     @Override
     public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
@@ -270,6 +274,7 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    // đăng nhập bằng Facebook OAuth
     @Override
     @Transactional
     public AuthResponse loginWithFacebook(FacebookLoginRequest request) {

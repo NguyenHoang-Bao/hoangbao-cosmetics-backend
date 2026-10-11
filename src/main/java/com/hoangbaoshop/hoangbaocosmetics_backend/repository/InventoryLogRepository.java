@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @Repository
 public interface InventoryLogRepository extends JpaRepository<InventoryLog, Integer> {
 
+    // tra cứu sổ cái biến động kho theo biến thể, loại giao dịch và thời gian
     @Query("SELECT l FROM InventoryLog l WHERE " +
            "(:variantId IS NULL OR l.variant.idVariant = :variantId) AND " +
            "(:transactionType IS NULL OR l.transactionType = :transactionType) AND " +

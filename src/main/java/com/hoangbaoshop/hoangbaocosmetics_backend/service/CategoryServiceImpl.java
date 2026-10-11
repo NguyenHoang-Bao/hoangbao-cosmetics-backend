@@ -25,6 +25,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
 
+    // get all category
     @Override
     @Transactional(readOnly = true)
     public List<CategoryResponse> getAllCategories() {
@@ -33,6 +34,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .collect(Collectors.toList());
     }
 
+    // get category by id
     @Override
     @Transactional(readOnly = true)
     public CategoryResponse getCategoryById(Integer id) {
@@ -41,6 +43,7 @@ public class CategoryServiceImpl implements CategoryService {
         return mapToResponse(category);
     }
 
+    // create category
     @Override
     @Transactional
     public CategoryResponse createCategory(CategoryRequest request) {
@@ -65,13 +68,14 @@ public class CategoryServiceImpl implements CategoryService {
         return mapToResponse(saved);
     }
 
+    // update category's name
     @Override
     @Transactional
     public CategoryResponse updateCategory(Integer id, CategoryRequest request) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với ID: " + id));
 
-        if (!category.getName().equalsIgnoreCase(request.getName().trim()) 
+        if (!category.getName().equalsIgnoreCase(request.getName().trim())
                 && categoryRepository.existsByName(request.getName().trim())) {
             throw new BadRequestException("Tên danh mục đã tồn tại: " + request.getName());
         }
@@ -90,6 +94,7 @@ public class CategoryServiceImpl implements CategoryService {
         return mapToResponse(updated);
     }
 
+    // delete category
     @Override
     @Transactional
     public void deleteCategory(Integer id) {
@@ -103,6 +108,7 @@ public class CategoryServiceImpl implements CategoryService {
         categoryRepository.delete(category);
     }
 
+    // hàm chung lấy dữ liệu từ db -> entity -> dto -> frontend
     private CategoryResponse mapToResponse(Category category) {
         return CategoryResponse.builder()
                 .idCategory(category.getIdCategory())
@@ -111,6 +117,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .build();
     }
 
+    // hàm biến chữ tiếng việt có dấu thành url không dấu (ví dụ: "Son Môi" -> "son-moi")
     private String toSlug(String input) {
         if (input == null || input.isBlank()) {
             return UUID.randomUUID().toString().substring(0, 8);

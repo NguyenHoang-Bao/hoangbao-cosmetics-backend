@@ -21,6 +21,7 @@ public class ImportReceiptDetailId implements Serializable {
     @Column(name = "id_variant")
     private Integer idVariant;
 
+    //so sanh idReceipt và idVariant
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -29,6 +30,7 @@ public class ImportReceiptDetailId implements Serializable {
         return Objects.equals(idReceipt, that.idReceipt) && Objects.equals(idVariant, that.idVariant);
     }
 
+    //hash để tìm nhanh
     @Override
     public int hashCode() {
         return Objects.hash(idReceipt, idVariant);

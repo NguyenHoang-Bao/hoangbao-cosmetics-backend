@@ -2,6 +2,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.dashboard;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,5 +16,5 @@ public class TopSellingProductResponse {
     private String thumbnail;
     private String categoryName;
     private Long totalQuantitySold;
-    private Double totalRevenue;
+    private BigDecimal totalRevenue;
 }

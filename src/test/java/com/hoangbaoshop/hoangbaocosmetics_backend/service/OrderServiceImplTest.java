@@ -15,6 +15,8 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.repository.OrderRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.ProductVariantRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
+
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -111,13 +113,13 @@ class OrderServiceImplTest {
         ProductVariant variant20 = ProductVariant.builder()
                 .idVariant(20)
                 .product(product)
-                .price(100000.0)
+                .price(BigDecimal.valueOf(100000))
                 .stockQuantity(10)
                 .build();
         ProductVariant variant50 = ProductVariant.builder()
                 .idVariant(50)
                 .product(product)
-                .price(200000.0)
+                .price(BigDecimal.valueOf(200000))
                 .stockQuantity(10)
                 .build();
 

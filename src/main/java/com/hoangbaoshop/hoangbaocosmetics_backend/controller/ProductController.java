@@ -22,7 +22,7 @@ public class ProductController {
 
     private final ProductService productService;
 
-    // 1. Lấy danh sách sản phẩm phân trang & tìm kiếm (Public)
+    // [GET] lấy danh sách sản phẩm phân trang và tìm kiếm (Public)
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getAllProducts(
             @RequestParam(required = false) String keyword,
@@ -39,14 +39,14 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 2. Lấy chi tiết sản phẩm theo ID (Public)
+    // [GET] lấy chi tiết sản phẩm theo id (Public)
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponse>> getProductById(@PathVariable Integer id) {
         ProductResponse response = productService.getProductById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 3. Thêm mới sản phẩm (Chỉ ADMIN hoặc WAREHOUSE_MANAGER)
+    // [POST] thêm mới sản phẩm (Admin / Warehouse Manager)
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('WAREHOUSE_MANAGER')")
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(@Valid @RequestBody ProductRequest request) {
@@ -55,7 +55,7 @@ public class ProductController {
                 .body(ApiResponse.success(response, "Thêm sản phẩm thành công!"));
     }
 
-    // 4. Cập nhật sản phẩm (Chỉ ADMIN hoặc WAREHOUSE_MANAGER)
+    // [PUT] cập nhật sản phẩm (Admin / Warehouse Manager)
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('WAREHOUSE_MANAGER')")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
@@ -66,7 +66,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(response, "Cập nhật sản phẩm thành công!"));
     }
 
-    // 5. Xóa sản phẩm (Chỉ ADMIN)
+    // [DELETE] xóa mềm sản phẩm (Admin)
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Integer id) {

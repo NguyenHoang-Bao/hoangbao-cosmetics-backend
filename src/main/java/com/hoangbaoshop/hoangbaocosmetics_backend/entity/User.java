@@ -46,11 +46,13 @@ public class User {
     @Column(name = "loyalty_points")
     private Integer loyaltyPoints = 0;
 
+    //phân loại đăng nhập: local, google, facebook
     @Builder.Default
     @Column(name = "auth_provider", length = 20)
-    private String authProvider = "LOCAL"; // 'LOCAL' hoặc 'GOOGLE'
+    private String authProvider = "LOCAL";
+    //mã id của oauth- để khong cần nhập pass
     @Column(name = "provider_id", length = 100)
-    private String providerId; // ID duy nhất của tài khoản từ Google
+    private String providerId;
 
     @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)

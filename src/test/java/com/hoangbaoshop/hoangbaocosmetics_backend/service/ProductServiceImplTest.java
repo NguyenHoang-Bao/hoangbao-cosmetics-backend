@@ -22,6 +22,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -101,8 +102,8 @@ class ProductServiceImplTest {
                 .idVariant(101)
                 .sku("SKU-100ML")
                 .capacity("100ml")
-                .price(150000.0)
-                .originalPrice(120000.0)
+                .price(BigDecimal.valueOf(150000))
+                .originalPrice(BigDecimal.valueOf(120000))
                 .stockQuantity(50) // Quan trọng: Tồn kho phải giữ nguyên
                 .isActive(true)
                 .build();
@@ -111,8 +112,8 @@ class ProductServiceImplTest {
                 .idVariant(102)
                 .sku("SKU-300ML")
                 .capacity("300ml")
-                .price(300000.0)
-                .originalPrice(250000.0)
+                .price(BigDecimal.valueOf(300000))
+                .originalPrice(BigDecimal.valueOf(250000))
                 .stockQuantity(30)
                 .isActive(true)
                 .build();
@@ -139,16 +140,16 @@ class ProductServiceImplTest {
                 .idVariant(101)
                 .sku("SKU-100ML-NEW")
                 .capacity("100ml")
-                .price(160000.0)
-                .originalPrice(130000.0)
+                .price(BigDecimal.valueOf(160000))
+                .originalPrice(BigDecimal.valueOf(130000))
                 .build();
 
         ProductVariantRequest reqNewVar = ProductVariantRequest.builder()
                 .idVariant(null)
                 .sku("SKU-500ML")
                 .capacity("500ml")
-                .price(450000.0)
-                .originalPrice(380000.0)
+                .price(BigDecimal.valueOf(450000))
+                .originalPrice(BigDecimal.valueOf(380000))
                 .stockQuantity(20)
                 .build();
 
@@ -164,7 +165,7 @@ class ProductServiceImplTest {
         assertNotNull(updatedResponse);
         // var101 giữ nguyên tồn kho 50 và cập nhật giá mới
         assertEquals(50, existingVar1.getStockQuantity());
-        assertEquals(160000.0, existingVar1.getPrice());
+        assertEquals(0, BigDecimal.valueOf(160000).compareTo(existingVar1.getPrice()));
         assertEquals("SKU-100ML-NEW", existingVar1.getSku());
         assertTrue(existingVar1.getIsActive());
 

@@ -11,6 +11,7 @@ import java.util.List;
 @Repository
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, Integer> {
 
+    // thống kê danh sách sản phẩm bán chạy nhất theo số lượng
     @Query("SELECT v.product.idProduct, v.product.name, v.product.thumbnail, v.product.category.name, " +
            "SUM(d.quantity), SUM(d.price * d.quantity) " +
            "FROM OrderDetail d " +

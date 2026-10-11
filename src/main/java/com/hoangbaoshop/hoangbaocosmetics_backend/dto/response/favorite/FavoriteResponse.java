@@ -2,6 +2,7 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.favorite;
 
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -16,6 +17,6 @@ public class FavoriteResponse {
     private String thumbnail;
     private String categoryName;
     private String brandName;
-    private Double minPrice;
+    private BigDecimal minPrice;
     private LocalDateTime favoritedAt;
 }

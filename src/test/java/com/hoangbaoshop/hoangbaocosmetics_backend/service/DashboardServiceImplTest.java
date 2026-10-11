@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +101,7 @@ class DashboardServiceImplTest {
 
         RevenueChartResponse oct = result.get(9); // month index 9 = Month 10
         assertEquals("Tháng 10/2026", oct.getPeriod());
-        assertEquals(5000000.0, oct.getRevenue());
+        assertEquals(0, BigDecimal.valueOf(5000000).compareTo(oct.getRevenue()));
         assertEquals(15L, oct.getOrderCount());
 
         verify(orderRepository, times(1)).getMonthlyRevenueBetween(expectedStart, expectedEnd);

@@ -50,6 +50,7 @@ public class ReplenishmentSlip {
     @OneToMany(mappedBy = "replenishmentSlip", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReplenishmentSlipDetail> details = new ArrayList<>();
 
+    //lấy now hiện tại lưu xuôgs db
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {

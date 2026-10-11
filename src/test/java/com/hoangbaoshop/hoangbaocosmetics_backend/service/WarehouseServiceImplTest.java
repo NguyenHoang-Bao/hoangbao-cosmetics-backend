@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -50,7 +51,7 @@ class WarehouseServiceImplTest {
                         ImportReceiptItemRequest.builder()
                                 .idVariant(10)
                                 .quantity(50)
-                                .importPrice(120000.0)
+                                .importPrice(BigDecimal.valueOf(120000))
                                 .build()
                 ))
                 .build();
@@ -61,7 +62,7 @@ class WarehouseServiceImplTest {
                 .idVariant(10)
                 .sku("SKU-10")
                 .stockQuantity(100)
-                .originalPrice(100000.0)
+                .originalPrice(BigDecimal.valueOf(100000))
                 .build();
 
         when(supplierRepository.findById(1)).thenReturn(Optional.of(supplier));
@@ -80,7 +81,7 @@ class WarehouseServiceImplTest {
         assertNotNull(response);
         // Verify atomic update methods are called on database level
         verify(productVariantRepository).increaseStockQuantity(10, 50);
-        verify(productVariantRepository).updateOriginalPrice(10, 120000.0);
+        verify(productVariantRepository).updateOriginalPrice(10, BigDecimal.valueOf(120000));
         // Verify atomic updates replaced in-memory setStockQuantity + save
         verify(productVariantRepository, never()).save(variant);
     }

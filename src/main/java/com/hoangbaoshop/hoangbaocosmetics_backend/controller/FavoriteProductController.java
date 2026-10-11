@@ -21,7 +21,7 @@ public class FavoriteProductController {
 
     private final FavoriteProductService favoriteProductService;
 
-    // 1. Thêm hoặc Bỏ yêu thích sản phẩm (Toggle)
+    // [POST] thêm hoặc bỏ yêu thích sản phẩm (toggle)
     @PostMapping("/{productId}")
     public ResponseEntity<ApiResponse<FavoriteToggleResponse>> toggleFavorite(
             @PathVariable Integer productId,
@@ -31,7 +31,7 @@ public class FavoriteProductController {
         return ResponseEntity.ok(ApiResponse.success(response, response.getMessage()));
     }
 
-    // 2. Lấy danh sách sản phẩm yêu thích của người dùng đăng nhập
+    // [GET] lấy danh sách sản phẩm yêu thích của người dùng hiện tại
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<FavoriteResponse>>> getMyFavorites(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -46,7 +46,7 @@ public class FavoriteProductController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 3. Kiểm tra sản phẩm đã được yêu thích chưa (Dùng cho nút bấm trái tim ở trang chi tiết)
+    // [GET] kiểm tra sản phẩm đã được yêu thích hay chưa
     @GetMapping("/check/{productId}")
     public ResponseEntity<ApiResponse<Boolean>> checkIsFavorite(
             @PathVariable Integer productId,

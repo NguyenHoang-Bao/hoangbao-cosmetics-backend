@@ -2,6 +2,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.product;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -13,8 +15,8 @@ public class ProductVariantResponse {
     private String sku;
     private String barcode;
     private String capacity;
-    private Double originalPrice;
-    private Double price;
+    private BigDecimal originalPrice;
+    private BigDecimal price;
     private Integer stockQuantity;
     private Integer shelfStock;
     private Integer centralStock;

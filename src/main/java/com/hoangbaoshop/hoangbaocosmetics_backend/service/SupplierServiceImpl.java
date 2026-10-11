@@ -24,6 +24,7 @@ public class SupplierServiceImpl implements SupplierService {
     private final SupplierRepository supplierRepository;
     private final ImportReceiptRepository importReceiptRepository;
 
+    // tạo nhà cung cấp mới
     @Override
     @Transactional
     public SupplierResponse createSupplier(SupplierRequest request) {
@@ -41,6 +42,7 @@ public class SupplierServiceImpl implements SupplierService {
         return mapToSupplierResponse(saved);
     }
 
+    // sửa thông tin nhà cung cấp
     @Override
     @Transactional
     public SupplierResponse updateSupplier(Integer id, SupplierRequest request) {
@@ -60,6 +62,7 @@ public class SupplierServiceImpl implements SupplierService {
         return mapToSupplierResponse(updated);
     }
 
+    // xóa nhà cung cấp
     @Override
     @Transactional
     public void deleteSupplier(Integer id) {
@@ -73,6 +76,7 @@ public class SupplierServiceImpl implements SupplierService {
         supplierRepository.delete(supplier);
     }
 
+    // lấy chi tiết nhà cung cấp theo id
     @Override
     @Transactional(readOnly = true)
     public SupplierResponse getSupplierById(Integer id) {
@@ -81,6 +85,7 @@ public class SupplierServiceImpl implements SupplierService {
         return mapToSupplierResponse(supplier);
     }
 
+    // lấy danh sách nhà cung cấp (có tìm kiếm & phân trang)
     @Override
     @Transactional(readOnly = true)
     public PageResponse<SupplierResponse> getAllSuppliers(String keyword, Pageable pageable) {
@@ -100,6 +105,7 @@ public class SupplierServiceImpl implements SupplierService {
                 .build();
     }
 
+    // hàm chung map entity sang dto
     private SupplierResponse mapToSupplierResponse(Supplier supplier) {
         return SupplierResponse.builder()
                 .idSupplier(supplier.getIdSupplier())

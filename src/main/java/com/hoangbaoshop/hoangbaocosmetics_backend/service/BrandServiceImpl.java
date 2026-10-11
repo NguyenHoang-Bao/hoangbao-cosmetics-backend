@@ -21,6 +21,7 @@ public class BrandServiceImpl implements BrandService {
     private final BrandRepository brandRepository;
     private final ProductRepository productRepository;
 
+    // get all brand
     @Override
     @Transactional(readOnly = true)
     public List<BrandResponse> getAllBrands() {
@@ -29,6 +30,7 @@ public class BrandServiceImpl implements BrandService {
                 .collect(Collectors.toList());
     }
 
+    //get brand by id
     @Override
     @Transactional(readOnly = true)
     public BrandResponse getBrandById(Integer id) {
@@ -37,6 +39,7 @@ public class BrandServiceImpl implements BrandService {
         return mapToResponse(brand);
     }
 
+    //create brand
     @Override
     @Transactional
     public BrandResponse createBrand(BrandRequest request) {
@@ -53,6 +56,7 @@ public class BrandServiceImpl implements BrandService {
         return mapToResponse(saved);
     }
 
+    // update brand's name
     @Override
     @Transactional
     public BrandResponse updateBrand(Integer id, BrandRequest request) {
@@ -73,6 +77,7 @@ public class BrandServiceImpl implements BrandService {
         return mapToResponse(updated);
     }
 
+    // delete brand
     @Override
     @Transactional
     public void deleteBrand(Integer id) {
@@ -86,6 +91,7 @@ public class BrandServiceImpl implements BrandService {
         brandRepository.delete(brand);
     }
 
+    // hàm chung lấy dữ liệu từ db -> entity -> dto -> frontend
     private BrandResponse mapToResponse(Brand brand) {
         return BrandResponse.builder()
                 .idBrand(brand.getIdBrand())

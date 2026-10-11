@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -30,18 +31,23 @@ public class FavoriteProductServiceImpl implements FavoriteProductService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
 
+    // bấm nút thả tim (tự động bật / tắt)
     @Override
     @Transactional
     public FavoriteToggleResponse toggleFavorite(String username, Integer productId) {
+        // tìm user
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin người dùng!"));
 
+        // tìm sản phẩm
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm với ID: " + productId));
 
+        // kiểm tra trong db đã thả tim chưa
         Optional<FavoriteProduct> existingFav = favoriteProductRepository.findByIdIdUserAndIdIdProduct(user.getIdUser(), productId);
 
         if (existingFav.isPresent()) {
+            // nếu có rồi -> xóa khỏi db (bỏ thích)
             favoriteProductRepository.delete(existingFav.get());
             return FavoriteToggleResponse.builder()
                     .idProduct(productId)
@@ -49,6 +55,7 @@ public class FavoriteProductServiceImpl implements FavoriteProductService {
                     .message("Đã xóa sản phẩm khỏi danh sách yêu thích")
                     .build();
         } else {
+            // nếu chưa -> tạo khóa chính kép (idUser + productId) rồi lưu vào db
             FavoriteProduct fav = FavoriteProduct.builder()
                     .id(new FavoriteProductId(user.getIdUser(), productId))
                     .user(user)
@@ -63,6 +70,7 @@ public class FavoriteProductServiceImpl implements FavoriteProductService {
         }
     }
 
+    // lấy danh sách sản phẩm yêu thích của user (có phân trang)
     @Override
     @Transactional(readOnly = true)
     public PageResponse<FavoriteResponse> getMyFavorites(String username, Pageable pageable) {
@@ -71,6 +79,7 @@ public class FavoriteProductServiceImpl implements FavoriteProductService {
                 .map(this::mapToFavoriteResponse)
                 .collect(Collectors.toList());
 
+        // đóng gói vào PageResponse chuẩn
         return PageResponse.<FavoriteResponse>builder()
                 .content(content)
                 .pageNo(page.getNumber())
@@ -81,6 +90,7 @@ public class FavoriteProductServiceImpl implements FavoriteProductService {
                 .build();
     }
 
+    // kiểm tra nhanh đã thích chưa để vẽ icon tim đỏ/xám
     @Override
     @Transactional(readOnly = true)
     public boolean checkIsFavorite(String username, Integer productId) {
@@ -89,14 +99,16 @@ public class FavoriteProductServiceImpl implements FavoriteProductService {
         return favoriteProductRepository.existsByIdIdUserAndIdIdProduct(user.getIdUser(), productId);
     }
 
+    // hàm chung map từ entity sang dto và tìm giá bán rẻ nhất của sản phẩm
     private FavoriteResponse mapToFavoriteResponse(FavoriteProduct fav) {
         Product product = fav.getProduct();
-        Double minPrice = 0.0;
+        BigDecimal minPrice = BigDecimal.ZERO;
         if (product.getVariants() != null && !product.getVariants().isEmpty()) {
             minPrice = product.getVariants().stream()
-                    .mapToDouble(ProductVariant::getPrice)
-                    .min()
-                    .orElse(0.0);
+                    .map(ProductVariant::getPrice)
+                    .filter(java.util.Objects::nonNull)
+                    .min(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ZERO);
         }
 
         return FavoriteResponse.builder()

@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     private final UserRepository userRepository;
     private final InventoryLogRepository inventoryLogRepository;
 
+    // tạo phiếu nhập kho: tính tổng tiền, tăng tồn kho biến thể và ghi sổ cái inventory_logs
     @Override
     @Transactional
     public ImportReceiptResponse createImportReceipt(String username, CreateImportReceiptRequest request) {
@@ -42,9 +44,10 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhà cung cấp với ID: " + request.getIdSupplier()));
 
         // 1. Tính tổng chi phí nhập hàng
-        double totalCost = 0.0;
+        BigDecimal totalCost = BigDecimal.ZERO;
         for (ImportReceiptItemRequest item : request.getItems()) {
-            totalCost += item.getImportPrice() * item.getQuantity();
+            BigDecimal itemSubTotal = item.getImportPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            totalCost = totalCost.add(itemSubTotal);
         }
 
         // 2. Tạo phiếu nhập kho
@@ -97,7 +100,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                     .productName(productName)
                     .quantity(item.getQuantity())
                     .importPrice(item.getImportPrice())
-                    .subTotal(item.getImportPrice() * item.getQuantity())
+                    .subTotal(item.getImportPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                     .build());
         }
 
@@ -114,6 +117,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .build();
     }
 
+    // lấy chi tiết phiếu nhập kho theo id
     @Override
     @Transactional(readOnly = true)
     public ImportReceiptResponse getImportReceiptById(Integer id) {
@@ -123,6 +127,7 @@ public class WarehouseServiceImpl implements WarehouseService {
         return mapToImportReceiptResponse(receipt);
     }
 
+    // lấy danh sách phiếu nhập kho (lọc theo ncc, ngày & phân trang)
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ImportReceiptResponse> getAllImportReceipts(
@@ -146,6 +151,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .build();
     }
 
+    // xem sổ cái lịch sử biến động kho (nhập, bán, hoàn...)
     @Override
     @Transactional(readOnly = true)
     public PageResponse<InventoryLogResponse> getInventoryLogs(
@@ -170,6 +176,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .build();
     }
 
+    // hàm chung map phiếu nhập entity sang dto
     private ImportReceiptResponse mapToImportReceiptResponse(ImportReceipt receipt) {
         List<ImportReceiptDetail> details = importReceiptDetailRepository.findByIdIdReceipt(receipt.getIdReceipt());
 
@@ -180,6 +187,10 @@ public class WarehouseServiceImpl implements WarehouseService {
                     String sku = v != null ? v.getSku() : "";
                     String capacity = v != null ? v.getCapacity() : "";
 
+                    BigDecimal subTotal = (d.getImportPrice() != null && d.getQuantity() != null)
+                            ? d.getImportPrice().multiply(BigDecimal.valueOf(d.getQuantity()))
+                            : BigDecimal.ZERO;
+
                     return ImportReceiptDetailResponse.builder()
                             .idVariant(v != null ? v.getIdVariant() : null)
                             .sku(sku)
@@ -187,7 +198,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                             .productName(prodName)
                             .quantity(d.getQuantity())
                             .importPrice(d.getImportPrice())
-                            .subTotal(d.getImportPrice() * d.getQuantity())
+                            .subTotal(subTotal)
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -205,6 +216,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .build();
     }
 
+    // hàm chung map sổ cái tồn kho entity sang dto
     private InventoryLogResponse mapToInventoryLogResponse(InventoryLog log) {
         ProductVariant v = log.getVariant();
         User u = log.getUser();

@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,5 +23,5 @@ public class ImportReceiptItemRequest {
 
     @NotNull(message = "Giá nhập không được để trống")
     @DecimalMin(value = "0.0", message = "Giá nhập phải lớn hơn hoặc bằng 0")
-    private Double importPrice;
+    private BigDecimal importPrice;
 }

@@ -20,24 +20,29 @@ public class AuthController {
 
     private final AuthService authService;
 
+    // [POST] đăng ký tài khoản mới
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(null, "Đăng ký tài khoản thành công!"));
     }
+
+    // [POST] đăng nhập bằng username / password
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập thành công!"));
     }
 
+    // [POST] đăng nhập bằng Google OAuth
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
         AuthResponse response = authService.loginWithGoogle(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập Google thành công!"));
     }
 
+    // [POST] đăng nhập bằng Facebook OAuth
     @PostMapping("/facebook")
     public ResponseEntity<ApiResponse<AuthResponse>> loginWithFacebook(@Valid @RequestBody FacebookLoginRequest request) {
         AuthResponse response = authService.loginWithFacebook(request);

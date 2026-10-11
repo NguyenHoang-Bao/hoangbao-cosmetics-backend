@@ -2,6 +2,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.payment;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -10,7 +12,7 @@ import lombok.*;
 public class PaymentQrResponse {
 
     private String orderCode;
-    private Double totalAmount;
+    private BigDecimal totalAmount;
     private String qrCodeUrl;
     private String bankId;
     private String accountNumber;

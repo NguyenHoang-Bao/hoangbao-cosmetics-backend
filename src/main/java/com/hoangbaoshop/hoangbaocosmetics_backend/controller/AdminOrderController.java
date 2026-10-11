@@ -32,6 +32,7 @@ public class AdminOrderController {
 
     private final OrderService orderService;
 
+    // [GET] lấy danh sách tất cả đơn hàng cho admin/staff kèm bộ lọc và phân trang
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<OrderResponse>>> getAllOrders(
             @RequestParam(required = false) OrderStatus status,
@@ -50,12 +51,14 @@ public class AdminOrderController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    // [GET] xem chi tiết đơn hàng by id cho admin/staff
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderDetail(@PathVariable Integer id) {
         OrderResponse response = orderService.getOrderDetailAdmin(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    // [PATCH] cập nhật trạng thái đơn hàng (duyệt, giao hàng, hoàn thành...)
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
             @PathVariable Integer id,
@@ -67,6 +70,7 @@ public class AdminOrderController {
         return ResponseEntity.ok(ApiResponse.success(response, "Cập nhật trạng thái đơn hàng thành công!"));
     }
 
+    // [POST] hủy đơn hàng và hoàn lại tồn kho (Admin / Staff)
     @PostMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
             @PathVariable Integer id,
@@ -78,6 +82,7 @@ public class AdminOrderController {
         return ResponseEntity.ok(ApiResponse.success(response, "Hủy đơn hàng và hoàn tồn kho thành công!"));
     }
 
+    // [POST] tạo đơn hàng bán tại quầy POS (trừ kho và hoàn thành ngay)
     @PostMapping("/pos")
     public ResponseEntity<ApiResponse<OrderResponse>> createPosOrder(
             @Valid @RequestBody CreatePosOrderRequest request,

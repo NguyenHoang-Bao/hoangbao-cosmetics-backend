@@ -2,6 +2,8 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.warehouse;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,6 +16,6 @@ public class ImportReceiptDetailResponse {
     private String capacity;
     private String productName;
     private Integer quantity;
-    private Double importPrice;
-    private Double subTotal;
+    private BigDecimal importPrice;
+    private BigDecimal subTotal;
 }

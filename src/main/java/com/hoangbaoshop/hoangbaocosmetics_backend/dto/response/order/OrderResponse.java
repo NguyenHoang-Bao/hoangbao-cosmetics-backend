@@ -5,6 +5,7 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderType;
 import com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,9 +23,9 @@ public class OrderResponse {
     private String phoneNumber;
     private String deliveryAddress;
     private OrderType orderType;
-    private Double totalProductPrice;
-    private Double shippingFee;
-    private Double totalAmount;
+    private BigDecimal totalProductPrice;
+    private BigDecimal shippingFee;
+    private BigDecimal totalAmount;
     private PaymentMethod paymentMethod;
     private String transactionId;
     private String webhookStatus;

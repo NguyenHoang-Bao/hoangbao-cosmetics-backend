@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -110,14 +111,14 @@ class PaymentServiceImplTest {
                 .transferType("in")
                 .content("Thanh toan ORD-12345678")
                 .referenceCode("TX-888")
-                .transferAmount(250000.0)
+                .transferAmount(BigDecimal.valueOf(250000))
                 .gateway("MBBank")
                 .build();
 
         Order order = Order.builder()
                 .idOrder(1)
                 .orderCode("ORD-12345678")
-                .totalAmount(250000.0)
+                .totalAmount(BigDecimal.valueOf(250000))
                 .status(OrderStatus.PENDING)
                 .build();
 
@@ -144,13 +145,13 @@ class PaymentServiceImplTest {
                 .transferType("in")
                 .content("Thanh toan ORD-12345678")
                 .referenceCode("TX-777")
-                .transferAmount(100000.0)
+                .transferAmount(BigDecimal.valueOf(100000))
                 .build();
 
         Order order = Order.builder()
                 .idOrder(1)
                 .orderCode("ORD-12345678")
-                .totalAmount(250000.0)
+                .totalAmount(BigDecimal.valueOf(250000))
                 .status(OrderStatus.PENDING)
                 .build();
 
@@ -176,13 +177,13 @@ class PaymentServiceImplTest {
                 .transferType("in")
                 .content("Thanh toan ORD-12345678")
                 .referenceCode("TX-666")
-                .transferAmount(250000.0)
+                .transferAmount(BigDecimal.valueOf(250000))
                 .build();
 
         Order order = Order.builder()
                 .idOrder(1)
                 .orderCode("ORD-12345678")
-                .totalAmount(250000.0)
+                .totalAmount(BigDecimal.valueOf(250000))
                 .status(OrderStatus.PENDING)
                 .build();
 

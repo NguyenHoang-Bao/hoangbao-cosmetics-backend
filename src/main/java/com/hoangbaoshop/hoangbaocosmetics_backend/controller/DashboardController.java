@@ -20,14 +20,14 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
 
-    // 1. Tổng quan các chỉ số KPI nhanh
+    // [GET] tổng quan các chỉ số KPI nhanh (Admin / Staff / Warehouse)
     @GetMapping("/overview")
     public ResponseEntity<ApiResponse<DashboardOverviewResponse>> getOverview() {
         DashboardOverviewResponse response = dashboardService.getDashboardOverview();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 2. Biểu đồ doanh thu theo 12 tháng trong năm
+    // [GET] biểu đồ doanh thu theo 12 tháng trong năm
     @GetMapping("/revenue/monthly")
     public ResponseEntity<ApiResponse<List<RevenueChartResponse>>> getMonthlyRevenue(
             @RequestParam(defaultValue = "0") int year
@@ -36,7 +36,7 @@ public class DashboardController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 3. Biểu đồ doanh thu theo ngày trong khoảng thời gian (mặc định 30 ngày gần nhất)
+    // [GET] biểu đồ doanh thu theo ngày trong khoảng thời gian
     @GetMapping("/revenue/daily")
     public ResponseEntity<ApiResponse<List<RevenueChartResponse>>> getDailyRevenue(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -46,14 +46,14 @@ public class DashboardController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 4. Phân bổ số lượng đơn hàng theo trạng thái
+    // [GET] phân bổ số lượng đơn hàng theo trạng thái
     @GetMapping("/order-status")
     public ResponseEntity<ApiResponse<List<OrderStatusDistributionResponse>>> getOrderStatusDistribution() {
         List<OrderStatusDistributionResponse> response = dashboardService.getOrderStatusDistribution();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 5. Top sản phẩm bán chạy nhất
+    // [GET] top sản phẩm bán chạy nhất
     @GetMapping("/top-selling")
     public ResponseEntity<ApiResponse<List<TopSellingProductResponse>>> getTopSellingProducts(
             @RequestParam(defaultValue = "5") int limit
@@ -62,7 +62,7 @@ public class DashboardController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // 6. Danh sách cảnh báo biến thể sản phẩm sắp hết hàng
+    // [GET] danh sách cảnh báo sản phẩm sắp hết hàng
     @GetMapping("/low-stock")
     public ResponseEntity<ApiResponse<List<LowStockProductResponse>>> getLowStockProducts(
             @RequestParam(defaultValue = "10") int threshold

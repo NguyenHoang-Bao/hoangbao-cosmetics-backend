@@ -11,10 +11,13 @@ import java.time.LocalDateTime;
 
 public interface WarehouseService {
 
+    // tạo phiếu nhập kho (cộng số lượng tồn kho + ghi sổ cái inventory log)
     ImportReceiptResponse createImportReceipt(String username, CreateImportReceiptRequest request);
 
+    // lấy chi tiết phiếu nhập kho theo id
     ImportReceiptResponse getImportReceiptById(Integer id);
 
+    // lấy danh sách phiếu nhập kho (lọc theo ncc, ngày & phân trang)
     PageResponse<ImportReceiptResponse> getAllImportReceipts(
             Integer supplierId,
             LocalDateTime startDate,
@@ -22,6 +25,7 @@ public interface WarehouseService {
             Pageable pageable
     );
 
+    // xem sổ cái lịch sử biến động kho (nhập hàng, bán hàng, hoàn kho...)
     PageResponse<InventoryLogResponse> getInventoryLogs(
             Integer variantId,
             TransactionType transactionType,

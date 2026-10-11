@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -48,6 +49,7 @@ public class OrderServiceImpl implements OrderService {
 
     private static final DateTimeFormatter ORDER_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
+    // tạo đơn hàng online (tính tiền, trừ tồn kho, ghi log xuất bán)
     @Override
     @Transactional
     public OrderResponse createOrder(String username, CreateOrderRequest request) {
@@ -58,7 +60,7 @@ public class OrderServiceImpl implements OrderService {
             user = userRepository.findByUsername(username).orElse(null);
         }
 
-        double shippingFee = 30000.0;
+        BigDecimal shippingFee = BigDecimal.valueOf(30000);
 
         Order order = Order.builder()
                 .orderCode(orderCode)
@@ -74,9 +76,9 @@ public class OrderServiceImpl implements OrderService {
                 .orderDetails(new ArrayList<>())
                 .build();
 
-        double totalProductPrice = buildOrderLines(order, request.getItems());
+        BigDecimal totalProductPrice = buildOrderLines(order, request.getItems());
         order.setTotalProductPrice(totalProductPrice);
-        order.setTotalAmount(totalProductPrice + shippingFee);
+        order.setTotalAmount(totalProductPrice.add(shippingFee));
 
         Order savedOrder = orderRepository.save(order);
         writeSaleLedger(savedOrder, user, "Xuất bán đơn hàng Online #");
@@ -84,6 +86,7 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponse(savedOrder);
     }
 
+    // lấy danh sách đơn hàng của người dùng hiện tại
     @Override
     @Transactional(readOnly = true)
     public PageResponse<OrderResponse> getMyOrders(String username, Pageable pageable) {
@@ -102,6 +105,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
+    // tra cứu đơn hàng theo mã đơn (kiểm tra quyền hoặc sđt khách)
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderByCode(String orderCode, String phoneNumber, String currentUsername) {
@@ -152,6 +156,7 @@ public class OrderServiceImpl implements OrderService {
 
     // ==================== ADMIN & STAFF METHODS ====================
 
+    // lấy danh sách đơn hàng cho admin/staff kèm bộ lọc và phân trang
     @Override
     @Transactional(readOnly = true)
     public PageResponse<OrderResponse> getAllOrdersAdmin(
@@ -178,6 +183,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
+    // lấy chi tiết đơn hàng by id cho admin/staff
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderDetailAdmin(Integer orderId) {
@@ -186,6 +192,7 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponse(order);
     }
 
+    // cập nhật trạng thái đơn hàng (kiểm tra luồng hợp lệ, hoàn kho nếu hủy)
     @Override
     @Transactional
     public OrderResponse updateOrderStatus(Integer orderId, UpdateOrderStatusRequest request, String staffUsername) {
@@ -229,6 +236,7 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponse(updatedOrder);
     }
 
+    // hủy đơn hàng từ phía admin/staff (hoàn lại kho và ghi sổ cái)
     @Override
     @Transactional
     public OrderResponse cancelOrderAdmin(Integer orderId, CancelOrderRequest request, String staffUsername) {
@@ -260,6 +268,7 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponse(savedOrder);
     }
 
+    // tạo đơn hàng bán tại quầy POS (trừ kho và hoàn thành ngay)
     @Override
     @Transactional
     public OrderResponse createPosOrder(CreatePosOrderRequest request, String staffUsername) {
@@ -270,7 +279,7 @@ public class OrderServiceImpl implements OrderService {
             staff = userRepository.findByUsername(staffUsername).orElse(null);
         }
 
-        double shippingFee = 0.0; // Bán tại quầy không tính phí vận chuyển
+        BigDecimal shippingFee = BigDecimal.ZERO; // Bán tại quầy không tính phí vận chuyển
 
         String customerName = (request.getCustomerName() != null && !request.getCustomerName().isBlank())
                 ? request.getCustomerName().trim()
@@ -290,9 +299,9 @@ public class OrderServiceImpl implements OrderService {
                 .orderDetails(new ArrayList<>())
                 .build();
 
-        double totalProductPrice = buildOrderLines(order, request.getItems());
+        BigDecimal totalProductPrice = buildOrderLines(order, request.getItems());
         order.setTotalProductPrice(totalProductPrice);
-        order.setTotalAmount(totalProductPrice + shippingFee);
+        order.setTotalAmount(totalProductPrice.add(shippingFee));
 
         Order savedOrder = orderRepository.save(order);
         writeSaleLedger(savedOrder, staff, "Xuất bán tại quầy POS đơn #");
@@ -302,6 +311,7 @@ public class OrderServiceImpl implements OrderService {
 
     // ==================== HELPER METHODS ====================
 
+    // kiểm tra hợp lệ khi chuyển đổi trạng thái đơn hàng
     private void validateStatusTransition(OrderStatus current, OrderStatus next) {
         switch (current) {
             case PENDING:
@@ -324,6 +334,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    // hoàn lại tồn kho và ghi sổ cái nhập trả khi hủy đơn
     private void rollbackStockForOrder(Order order, User actor, String reason) {
         if (order.getOrderDetails() != null) {
             User logActor = actor != null ? actor : userRepository.findByUsername("admin").orElse(null);
@@ -349,7 +360,8 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private double buildOrderLines(Order order, List<OrderItemRequest> items) {
+    // xử lý chi tiết đơn hàng, trừ tồn kho nguyên tử và tính tổng tiền
+    private BigDecimal buildOrderLines(Order order, List<OrderItemRequest> items) {
         // 1. Sắp xếp items theo idVariant để ngăn ngừa Deadlock giữa các transaction mua đồng thời
         List<OrderItemRequest> sortedItems = items.stream()
                 .sorted(Comparator.comparing(OrderItemRequest::getIdVariant))
@@ -363,7 +375,7 @@ public class OrderServiceImpl implements OrderService {
         Map<Integer, ProductVariant> variantMap = productVariantRepository.findAllWithProductByIdIn(variantIds).stream()
                 .collect(Collectors.toMap(ProductVariant::getIdVariant, v -> v));
 
-        double totalProductPrice = 0.0;
+        BigDecimal totalProductPrice = BigDecimal.ZERO;
         for (OrderItemRequest item : sortedItems) {
             ProductVariant variant = variantMap.get(item.getIdVariant());
             if (variant == null) {
@@ -377,8 +389,9 @@ public class OrderServiceImpl implements OrderService {
                 throw new BadRequestException("Sản phẩm '" + productName + " (" + variant.getCapacity() + ")' không đủ số lượng tồn kho");
             }
 
-            double itemPrice = variant.getPrice();
-            totalProductPrice += itemPrice * item.getQuantity();
+            BigDecimal itemPrice = variant.getPrice();
+            BigDecimal lineTotal = itemPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
+            totalProductPrice = totalProductPrice.add(lineTotal);
 
             OrderDetail orderDetail = OrderDetail.builder()
                     .variant(variant)
@@ -392,6 +405,7 @@ public class OrderServiceImpl implements OrderService {
         return totalProductPrice;
     }
 
+    // ghi sổ cái biến động kho khi xuất bán
     private void writeSaleLedger(Order order, User actor, String notePrefix) {
         User logActor = actor != null ? actor : userRepository.findByUsername("admin").orElse(null);
         if (logActor != null && order.getOrderDetails() != null && !order.getOrderDetails().isEmpty()) {
@@ -409,12 +423,14 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    // sinh mã đơn hàng tự động duy nhất
     private String generateOrderCode() {
         String datePart = LocalDate.now().format(ORDER_DATE_FORMATTER);
         String randomPart = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
         return "ORD-" + datePart + "-" + randomPart;
     }
 
+    // hàm chung map entity sang dto
     private OrderResponse mapToOrderResponse(Order order) {
         List<OrderDetailResponse> items = order.getOrderDetails().stream()
                 .map(detail -> {
@@ -424,9 +440,9 @@ public class OrderServiceImpl implements OrderService {
                             : null;
                     String capacity = variant != null ? variant.getCapacity() : null;
                     String sku = variant != null ? variant.getSku() : null;
-                    Double subTotal = (detail.getPrice() != null && detail.getQuantity() != null)
-                            ? detail.getPrice() * detail.getQuantity()
-                            : 0.0;
+                    BigDecimal subTotal = (detail.getPrice() != null && detail.getQuantity() != null)
+                            ? detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()))
+                            : BigDecimal.ZERO;
 
                     return OrderDetailResponse.builder()
                             .idOrderDetail(detail.getIdOrderDetail())

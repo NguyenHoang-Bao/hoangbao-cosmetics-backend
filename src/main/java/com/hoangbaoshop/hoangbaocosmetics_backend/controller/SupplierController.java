@@ -23,6 +23,7 @@ public class SupplierController {
 
     private final SupplierService supplierService;
 
+    // [POST] thêm nhà cung cấp mới
     @PostMapping
     public ResponseEntity<ApiResponse<SupplierResponse>> createSupplier(@Valid @RequestBody SupplierRequest request) {
         SupplierResponse response = supplierService.createSupplier(request);
@@ -30,6 +31,7 @@ public class SupplierController {
                 .body(ApiResponse.success(response, "Thêm nhà cung cấp thành công!"));
     }
 
+    // [PUT] cập nhật thông tin nhà cung cấp
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<SupplierResponse>> updateSupplier(
             @PathVariable Integer id,
@@ -39,18 +41,21 @@ public class SupplierController {
         return ResponseEntity.ok(ApiResponse.success(response, "Cập nhật nhà cung cấp thành công!"));
     }
 
+    // [DELETE] xóa nhà cung cấp
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteSupplier(@PathVariable Integer id) {
         supplierService.deleteSupplier(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Xóa nhà cung cấp thành công!"));
     }
 
+    // [GET] lấy chi tiết nhà cung cấp by id
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<SupplierResponse>> getSupplierById(@PathVariable Integer id) {
         SupplierResponse response = supplierService.getSupplierById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    // [GET] lấy danh sách nhà cung cấp phân trang và tìm kiếm
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<SupplierResponse>>> getAllSuppliers(
             @RequestParam(required = false) String keyword,

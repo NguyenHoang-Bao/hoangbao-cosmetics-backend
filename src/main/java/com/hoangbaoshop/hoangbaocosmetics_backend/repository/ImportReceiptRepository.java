@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @Repository
 public interface ImportReceiptRepository extends JpaRepository<ImportReceipt, Integer> {
 
+    // tìm kiếm phiếu nhập kho theo nhà cung cấp và khoảng thời gian có phân trang
     @Query("SELECT r FROM ImportReceipt r WHERE " +
            "(:supplierId IS NULL OR r.supplier.idSupplier = :supplierId) AND " +
            "(:startDate IS NULL OR r.importDate >= :startDate) AND " +
@@ -24,5 +25,6 @@ public interface ImportReceiptRepository extends JpaRepository<ImportReceipt, In
             Pageable pageable
     );
 
+    // kiểm tra nhà cung cấp đã có phiếu nhập kho nào hay chưa
     boolean existsBySupplierIdSupplier(Integer supplierId);
 }
