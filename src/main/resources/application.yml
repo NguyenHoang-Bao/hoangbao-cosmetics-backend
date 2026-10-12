@@ -40,8 +40,9 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
-# Cấu hình nén gzip cho HTTP Response
+# Cấu hình máy chủ web và nén gzip cho HTTP Response
 server:
+  forward-headers-strategy: framework # Tự động nhận diện IP thật và giao thức HTTPS từ Render/Railway/Nginx Reverse Proxy
   compression:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
@@ -74,3 +75,13 @@ payment:
 # Cấu hình OAuth Google
 google:
   client-id: "${GOOGLE_CLIENT_ID:237683305659-mv2f4c61lghtdahblnffl6f6tbn6p66m.apps.googleusercontent.com}"
+
+# Cấu hình Spring Boot Actuator (Healthcheck cho Docker/Render/Railway)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized

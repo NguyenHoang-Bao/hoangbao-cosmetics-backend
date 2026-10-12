@@ -98,6 +98,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+                        // Spring Boot Actuator Health Check (phục vụ giám sát hệ thống Docker/Render/Railway)
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         // Các API công khai cho phép truy cập tự do
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/brands/**").permitAll()
