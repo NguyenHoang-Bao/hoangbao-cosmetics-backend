@@ -43,6 +43,10 @@ public class User {
     private Boolean enabled = true;
 
     @Builder.Default
+    @Column(name = "email_verified")
+    private Boolean emailVerified = false;
+
+    @Builder.Default
     @Column(name = "loyalty_points")
     private Integer loyaltyPoints = 0;
 

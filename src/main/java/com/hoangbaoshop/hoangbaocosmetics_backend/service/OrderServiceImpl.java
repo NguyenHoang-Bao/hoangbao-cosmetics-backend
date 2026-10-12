@@ -17,12 +17,16 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.exception.ResourceNotFoundExce
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.InventoryLogRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.OrderRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.ProductVariantRepository;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.email.OrderEmailDto;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import java.util.Collections;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -46,6 +50,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
     private final InventoryLogRepository inventoryLogRepository;
+    private final EmailService emailService;
 
     private static final DateTimeFormatter ORDER_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -82,6 +87,15 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
         writeSaleLedger(savedOrder, user, "Xuất bán đơn hàng Online #");
+
+        // Gửi email xác nhận đơn hàng bất đồng bộ tới khách hàng sau khi transaction commit thành công
+        String recipientEmail = (user != null && user.getEmail() != null && !user.getEmail().isBlank())
+                ? user.getEmail()
+                : request.getEmail();
+        if (recipientEmail != null && !recipientEmail.isBlank()) {
+            OrderEmailDto emailDto = mapToOrderEmailDto(savedOrder);
+            executeAfterCommit(() -> emailService.sendOrderConfirmationEmail(emailDto, recipientEmail.trim()));
+        }
 
         return mapToOrderResponse(savedOrder);
     }
@@ -477,5 +491,52 @@ public class OrderServiceImpl implements OrderService {
                 .createdAt(order.getCreatedAt())
                 .items(items)
                 .build();
+    }
+
+    // chuyển đổi sang snapshot DTO phục vụ gửi email phi tập trung an toàn với luồng async
+    private OrderEmailDto mapToOrderEmailDto(Order order) {
+        List<OrderEmailDto.Item> items = order.getOrderDetails() != null
+                ? order.getOrderDetails().stream()
+                .map(d -> {
+                    ProductVariant v = d.getVariant();
+                    String name = (v != null && v.getProduct() != null) ? v.getProduct().getName() : "Sản phẩm";
+                    String cap = (v != null && v.getCapacity() != null) ? v.getCapacity() : "";
+                    BigDecimal pr = d.getPrice() != null ? d.getPrice() : BigDecimal.ZERO;
+                    return OrderEmailDto.Item.builder()
+                            .productName(name)
+                            .capacity(cap)
+                            .quantity(d.getQuantity())
+                            .price(pr)
+                            .lineTotal(pr.multiply(BigDecimal.valueOf(d.getQuantity())))
+                            .build();
+                })
+                .toList()
+                : Collections.emptyList();
+
+        return OrderEmailDto.builder()
+                .orderCode(order.getOrderCode())
+                .customerName(order.getCustomerName())
+                .phoneNumber(order.getPhoneNumber())
+                .deliveryAddress(order.getDeliveryAddress())
+                .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : "COD")
+                .createdAt(order.getCreatedAt())
+                .shippingFee(order.getShippingFee())
+                .totalAmount(order.getTotalAmount())
+                .items(items)
+                .build();
+    }
+
+    // thực thi tác vụ sau khi database transaction đã commit thành công
+    private void executeAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
     }
 }

@@ -41,6 +41,12 @@ class AuthServiceImplTest {
     private AuthenticationManager authenticationManager;
     @Mock
     private JwtUtils jwtUtils;
+    @Mock
+    private OtpService otpService;
+    @Mock
+    private com.hoangbaoshop.hoangbaocosmetics_backend.repository.OtpTokenRepository otpTokenRepository;
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -51,7 +57,7 @@ class AuthServiceImplTest {
                 .username("new_user")
                 .password("plain_pass")
                 .fullName("Nguyễn Văn A")
-                .email("nva@gmail.com")
+                .email("  Nva@Gmail.Com  ")
                 .phoneNumber("0988888888")
                 .build();
 
@@ -62,15 +68,18 @@ class AuthServiceImplTest {
 
         Role customerRole = Role.builder().idRole(1).nameRole("CUSTOMER").build();
         when(roleRepository.findByNameRole("CUSTOMER")).thenReturn(Optional.of(customerRole));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         authService.register(request);
 
         verify(userRepository, times(1)).save(argThat(user ->
                 user.getUsername().equals("new_user") &&
                 user.getPassword().equals("encoded_pass") &&
+                "nva@gmail.com".equals(user.getEmail()) &&
                 user.getRoles().contains(customerRole) &&
                 Boolean.TRUE.equals(user.getEnabled())
         ));
+        verify(emailService, times(1)).sendAccountVerificationEmail(eq("nva@gmail.com"), eq("Nguyễn Văn A"), anyString());
     }
 
     @Test
@@ -129,5 +138,29 @@ class AuthServiceImplTest {
                 .thenThrow(new BadCredentialsException("Sai tài khoản hoặc mật khẩu"));
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void testVerifyEmailToken_Success_SetsEmailVerifiedTrue() {
+        String token = "valid_uuid_token";
+        com.hoangbaoshop.hoangbaocosmetics_backend.entity.OtpToken otpToken = com.hoangbaoshop.hoangbaocosmetics_backend.entity.OtpToken.builder()
+                .email("test@gmail.com")
+                .otpCode(token)
+                .tokenType(com.hoangbaoshop.hoangbaocosmetics_backend.enums.OtpTokenType.REGISTER_VERIFY)
+                .expiryTime(java.time.LocalDateTime.now().plusHours(1))
+                .isUsed(false)
+                .build();
+
+        User user = User.builder().email("test@gmail.com").emailVerified(false).build();
+
+        when(otpTokenRepository.findTopByOtpCodeAndTokenTypeAndIsUsedFalse(token, com.hoangbaoshop.hoangbaocosmetics_backend.enums.OtpTokenType.REGISTER_VERIFY))
+                .thenReturn(Optional.of(otpToken));
+        when(userRepository.findByEmail("test@gmail.com")).thenReturn(Optional.of(user));
+
+        authService.verifyEmailToken(token);
+
+        assertTrue(otpToken.getIsUsed());
+        assertTrue(user.getEmailVerified());
+        verify(userRepository, times(1)).save(user);
     }
 }
