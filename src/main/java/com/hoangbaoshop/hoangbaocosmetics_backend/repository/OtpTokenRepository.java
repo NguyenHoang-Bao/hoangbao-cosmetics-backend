@@ -18,4 +18,10 @@ public interface OtpTokenRepository extends JpaRepository<OtpToken, Long> {
 
     // lấy token xác thực theo mã code, loại token và chưa được sử dụng
     Optional<OtpToken> findTopByOtpCodeAndTokenTypeAndIsUsedFalse(String otpCode, OtpTokenType tokenType);
+
+    // dọn dẹp các token đã hết hạn hoặc đã sử dụng trước mốc thời gian chỉ định
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query("DELETE FROM OtpToken o WHERE o.expiryTime < :cutoffTime OR o.isUsed = true")
+    int deleteExpiredOrUsedTokens(@org.springframework.data.repository.query.Param("cutoffTime") java.time.LocalDateTime cutoffTime);
 }
