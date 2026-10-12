@@ -25,6 +25,20 @@ spring:
           batch_size: 50
         order_inserts: true
         order_updates: true
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:hbao4142@gmail.com}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 # Cấu hình nén gzip cho HTTP Response
 server:
@@ -33,8 +47,10 @@ server:
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
     min-response-size: 1024
 
-# Cấu hình danh sách tên miền CORS cho phép
+# Cấu hình danh sách tên miền CORS và URL hệ thống
 app:
+  backend-url: ${APP_BACKEND_URL:http://localhost:8080}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000}
 

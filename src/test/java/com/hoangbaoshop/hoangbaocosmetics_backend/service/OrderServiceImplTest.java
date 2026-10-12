@@ -48,6 +48,8 @@ class OrderServiceImplTest {
     private UserRepository userRepository;
     @Mock
     private InventoryLogRepository inventoryLogRepository;
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -149,5 +151,42 @@ class OrderServiceImplTest {
                 "Mã đơn hàng phải tuân theo định dạng chuẩn ngày ORD-YYYYMMDD-XXXXXX"
         );
         verify(orderRepository, never()).findByOrderCode(anyString());
+    }
+
+    @Test
+    void testCreateOrder_WithEmail_SendsOrderConfirmationEmailWithDto() {
+        OrderItemRequest item = OrderItemRequest.builder().idVariant(10).quantity(1).build();
+        CreateOrderRequest request = CreateOrderRequest.builder()
+                .customerName("Khách Mua Hàng")
+                .phoneNumber("0912345678")
+                .email("buyer@gmail.com")
+                .deliveryAddress("TP. Hồ Chí Minh")
+                .paymentMethod(PaymentMethod.COD)
+                .items(Collections.singletonList(item))
+                .build();
+
+        Product product = Product.builder().idProduct(1).name("Kem Dưỡng").build();
+        ProductVariant variant10 = ProductVariant.builder()
+                .idVariant(10)
+                .product(product)
+                .capacity("50ml")
+                .price(BigDecimal.valueOf(250000))
+                .stockQuantity(10)
+                .build();
+
+        when(productVariantRepository.findAllWithProductByIdIn(anyCollection()))
+                .thenReturn(Collections.singletonList(variant10));
+        when(productVariantRepository.decreaseStockQuantity(10, 1)).thenReturn(1);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.createOrder(null, request);
+
+        verify(emailService, times(1)).sendOrderConfirmationEmail(
+                argThat(dto -> dto != null && "buyer@gmail.com".equals("buyer@gmail.com")
+                        && dto.getItems() != null && dto.getItems().size() == 1
+                        && "Kem Dưỡng".equals(dto.getItems().get(0).getProductName())
+                        && "50ml".equals(dto.getItems().get(0).getCapacity())),
+                eq("buyer@gmail.com")
+        );
     }
 }

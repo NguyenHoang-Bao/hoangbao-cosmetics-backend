@@ -35,7 +35,17 @@ import java.util.stream.Collectors;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.FacebookLoginRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestTemplate;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.SendOtpRequest;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.VerifyOtpRequest;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.ResetPasswordWithOtpRequest;
+import com.hoangbaoshop.hoangbaocosmetics_backend.enums.OtpTokenType;
 import java.util.Map;
+import com.hoangbaoshop.hoangbaocosmetics_backend.repository.OtpTokenRepository;
+import com.hoangbaoshop.hoangbaocosmetics_backend.entity.OtpToken;
+import java.time.LocalDateTime;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -43,23 +53,33 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder
-            passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
+    private final OtpService otpService;
+    private final OtpTokenRepository otpTokenRepository;
+    private final EmailService emailService;
 
     @Value("${google.client-id}")
     private String googleClientId;
+
+    @Value("${app.backend-url:http://localhost:8080}")
+    private String backendUrl;
 
     // đăng ký tài khoản mới
     @Override
     @Transactional
     public void register(RegisterRequest request) {
+        // Chuẩn hóa email nếu có
+        String cleanEmail = (request.getEmail() != null && !request.getEmail().isBlank())
+                ? request.getEmail().trim().toLowerCase()
+                : null;
+
         //kiểm tra tài khoản tồn tại chưa
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new BadRequestException("Tên đăng nhập đã tồn tại!");
         }
-        if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
+        if (cleanEmail != null && userRepository.existsByEmail(cleanEmail)) {
             throw new BadRequestException("Email đã được sử dụng!");
         }
         if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
@@ -71,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .email(request.getEmail())
+                .email(cleanEmail)
                 .phoneNumber(request.getPhoneNumber())
                 .enabled(true)
                 .build();
@@ -84,7 +104,26 @@ public class AuthServiceImpl implements AuthService {
         user.setRoles(roles);
 
         // save database
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // gửi email xác thực tài khoản 1-click nếu có email (sau khi transaction commit thành công)
+        if (savedUser.getEmail() != null && !savedUser.getEmail().isBlank()) {
+            String token = UUID.randomUUID().toString().replace("-", "");
+            OtpToken verificationToken = OtpToken.builder()
+                    .email(savedUser.getEmail())
+                    .otpCode(token)
+                    .tokenType(OtpTokenType.REGISTER_VERIFY)
+                    .expiryTime(LocalDateTime.now().plusHours(24))
+                    .isUsed(false)
+                    .attemptCount(0)
+                    .build();
+            otpTokenRepository.save(verificationToken);
+
+            String verificationUrl = backendUrl + "/api/auth/verify-email?token=" + token;
+            String userEmail = savedUser.getEmail();
+            String fullName = savedUser.getFullName();
+            executeAfterCommit(() -> emailService.sendAccountVerificationEmail(userEmail, fullName, verificationUrl));
+        }
     }
 
     // đăng nhập bằng username / password
@@ -220,6 +259,7 @@ public class AuthServiceImpl implements AuthService {
                         .authProvider("GOOGLE")
                         .providerId(finalGoogleId)
                         .enabled(true)
+                        .emailVerified(true)
                         .roles(new HashSet<>(Set.of(customerRole)))
                         .build();
 
@@ -373,6 +413,93 @@ public class AuthServiceImpl implements AuthService {
             throw e;
         } catch (Exception e) {
             throw new BadRequestException("Đăng nhập bằng Facebook thất bại: " + e.getMessage());
+        }
+    }
+
+    // gửi mã OTP đặt lại mật khẩu qua email
+    @Override
+    @Transactional
+    public void sendForgotPasswordOtp(SendOtpRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email: " + request.getEmail()));
+
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            throw new BadRequestException("Tài khoản này đã bị khóa. Vui lòng liên hệ ban quản trị!");
+        }
+
+        otpService.generateAndSendOtp(cleanEmail, OtpTokenType.FORGOT_PASSWORD);
+    }
+
+    // xác thực mã OTP đặt lại mật khẩu
+    @Override
+    @Transactional
+    public void verifyForgotPasswordOtp(VerifyOtpRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        if (!userRepository.existsByEmail(cleanEmail)) {
+            throw new ResourceNotFoundException("Không tìm thấy tài khoản với email: " + request.getEmail());
+        }
+
+        otpService.verifyOtp(cleanEmail, request.getOtpCode(), OtpTokenType.FORGOT_PASSWORD);
+    }
+
+    // đặt lại mật khẩu mới bằng mã OTP
+    @Override
+    @Transactional
+    public void resetPasswordWithOtp(ResetPasswordWithOtpRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email: " + request.getEmail()));
+
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            throw new BadRequestException("Tài khoản này đã bị khóa!");
+        }
+
+        // Kiểm tra và tiêu thụ OTP (đánh dấu đã sử dụng)
+        otpService.consumeOtp(cleanEmail, request.getOtpCode(), OtpTokenType.FORGOT_PASSWORD);
+
+        // Cập nhật mật khẩu mã hóa mới
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    // xác thực tài khoản qua liên kết 1-click gửi trong email
+    @Override
+    @Transactional
+    public void verifyEmailToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new BadRequestException("Mã xác thực không hợp lệ!");
+        }
+
+        OtpToken otpToken = otpTokenRepository.findTopByOtpCodeAndTokenTypeAndIsUsedFalse(token.trim(), OtpTokenType.REGISTER_VERIFY)
+                .orElseThrow(() -> new BadRequestException("Liên kết xác thực không hợp lệ hoặc đã được sử dụng!"));
+
+        if (otpToken.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Liên kết xác thực đã hết hạn! Vui lòng liên hệ ban quản trị để được hỗ trợ.");
+        }
+
+        otpToken.setIsUsed(true);
+        otpTokenRepository.save(otpToken);
+
+        User user = userRepository.findByEmail(otpToken.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản người dùng tương ứng!"));
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        log.info("Xác thực email thành công cho tài khoản: {}", user.getEmail());
+    }
+
+    // thực thi tác vụ sau khi database transaction đã commit thành công
+    private void executeAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
         }
     }
 }

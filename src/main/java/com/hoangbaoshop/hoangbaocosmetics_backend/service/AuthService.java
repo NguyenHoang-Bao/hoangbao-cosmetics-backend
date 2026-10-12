@@ -18,4 +18,16 @@ public interface AuthService {
 
     // đăng nhập bằng Facebook OAuth
     AuthResponse loginWithFacebook(FacebookLoginRequest request);
+
+    // gửi mã OTP đặt lại mật khẩu qua email
+    void sendForgotPasswordOtp(com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.SendOtpRequest request);
+
+    // xác thực mã OTP đặt lại mật khẩu
+    void verifyForgotPasswordOtp(com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.VerifyOtpRequest request);
+
+    // đặt lại mật khẩu mới bằng mã OTP
+    void resetPasswordWithOtp(com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.ResetPasswordWithOtpRequest request);
+
+    // xác thực tài khoản qua liên kết 1-click gửi trong email
+    void verifyEmailToken(String token);
 }

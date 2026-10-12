@@ -38,6 +38,7 @@ CREATE TABLE `users` (
   `phone_number` varchar(20) DEFAULT NULL UNIQUE,
   `avatar` varchar(255) DEFAULT NULL,
   `enabled` bit(1) DEFAULT b'1',
+  `email_verified` bit(1) DEFAULT b'0',
   `loyalty_points` int(11) DEFAULT 0,
   `auth_provider` varchar(20) DEFAULT 'LOCAL',
   `provider_id` varchar(100) DEFAULT NULL,
@@ -351,6 +352,20 @@ CREATE TABLE `feedbacks` (
   `is_read` bit(1) DEFAULT b'0',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_feedback`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `otp_tokens` (
+  `id_otp` bigint NOT NULL AUTO_INCREMENT,
+  `attempt_count` int NOT NULL DEFAULT 0,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expiry_time` datetime(6) NOT NULL,
+  `is_used` bit(1) NOT NULL DEFAULT b'0',
+  `otp_code` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token_type` enum('FORGOT_PASSWORD','REGISTER_VERIFY') COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id_otp`),
+  KEY `idx_otp_email_type` (`email`, `token_type`),
+  KEY `idx_otp_code` (`otp_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
