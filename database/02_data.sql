@@ -155,6 +155,17 @@ INSERT INTO `replenishment_slip_details` (id_detail, id_slip, id_variant, quanti
 (4, 2, 40, 6),
 (5, 2, 33, 10);
 
+-- ------------------------------------------------------
+-- DỮ LIỆU BẢNG: 19. CẤU HÌNH HỆ THỐNG ĐỘNG (SYSTEM_SETTINGS)
+-- ------------------------------------------------------
+INSERT INTO `system_settings` (`setting_key`, `setting_value`, `data_type`, `description`, `is_public`) VALUES
+('DEFAULT_SHIPPING_FEE', '30000', 'NUMBER', 'Phí vận chuyển mặc định cho đơn hàng online (VNĐ)', b'1'),
+('FREE_SHIPPING_THRESHOLD', '500000', 'NUMBER', 'Giá trị đơn hàng tối thiểu để được miễn phí vận chuyển (VNĐ)', b'1'),
+('BANK_TRANSFER_EXPIRY_MINUTES', '30', 'NUMBER', 'Thời gian chờ thanh toán chuyển khoản trước khi tự hủy đơn (phút)', b'0'),
+('STORE_NAME', 'Hoàng Bảo Cosmetics', 'STRING', 'Tên thương hiệu cửa hàng', b'1'),
+('STORE_HOTLINE', '0912345678', 'STRING', 'Hotline chăm sóc khách hàng', b'1'),
+('STORE_EMAIL', 'hbao4142@gmail.com', 'STRING', 'Email hỗ trợ khách hàng', b'1');
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ==============================================================================

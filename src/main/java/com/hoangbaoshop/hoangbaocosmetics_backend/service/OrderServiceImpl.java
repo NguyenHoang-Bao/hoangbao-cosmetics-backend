@@ -51,6 +51,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final InventoryLogRepository inventoryLogRepository;
     private final EmailService emailService;
+    private final SystemSettingService systemSettingService;
 
     private static final DateTimeFormatter ORDER_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -65,7 +66,11 @@ public class OrderServiceImpl implements OrderService {
             user = userRepository.findByUsername(username).orElse(null);
         }
 
-        BigDecimal shippingFee = BigDecimal.valueOf(30000);
+        BigDecimal defaultShippingFee = systemSettingService.getBigDecimalValue("DEFAULT_SHIPPING_FEE", BigDecimal.valueOf(30000));
+        if (defaultShippingFee == null) {
+            defaultShippingFee = BigDecimal.valueOf(30000);
+        }
+        BigDecimal freeShippingThreshold = systemSettingService.getBigDecimalValue("FREE_SHIPPING_THRESHOLD", BigDecimal.valueOf(500000));
 
         Order order = Order.builder()
                 .orderCode(orderCode)
@@ -74,7 +79,7 @@ public class OrderServiceImpl implements OrderService {
                 .customerName(request.getCustomerName())
                 .phoneNumber(request.getPhoneNumber())
                 .deliveryAddress(request.getDeliveryAddress())
-                .shippingFee(shippingFee)
+                .shippingFee(defaultShippingFee)
                 .paymentMethod(request.getPaymentMethod())
                 .status(OrderStatus.PENDING)
                 .note(request.getNote())
@@ -83,7 +88,16 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal totalProductPrice = buildOrderLines(order, request.getItems());
         order.setTotalProductPrice(totalProductPrice);
-        order.setTotalAmount(totalProductPrice.add(shippingFee));
+
+        // Tự động miễn phí vận chuyển nếu đạt ngưỡng giá trị đơn hàng cấu hình bởi Admin
+        BigDecimal finalShippingFee = (freeShippingThreshold != null && freeShippingThreshold.compareTo(BigDecimal.ZERO) > 0 && totalProductPrice.compareTo(freeShippingThreshold) >= 0)
+                ? BigDecimal.ZERO
+                : defaultShippingFee;
+        if (finalShippingFee == null) {
+            finalShippingFee = BigDecimal.valueOf(30000);
+        }
+        order.setShippingFee(finalShippingFee);
+        order.setTotalAmount(totalProductPrice.add(finalShippingFee));
 
         Order savedOrder = orderRepository.save(order);
         writeSaleLedger(savedOrder, user, "Xuất bán đơn hàng Online #");
@@ -323,18 +337,19 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponse(savedOrder);
     }
 
-    // quét và tự động hủy các đơn chuyển khoản ngân hàng quá hạn thanh toán 30 phút, hoàn tồn kho
+    // quét và tự động hủy các đơn chuyển khoản ngân hàng quá hạn thanh toán cấu hình bởi Admin, hoàn tồn kho
     @Override
     @Transactional
     public int cancelExpiredBankTransferOrders() {
-        LocalDateTime thirtyMinutesAgo = LocalDateTime.now().minusMinutes(30);
+        int expiryMinutes = systemSettingService.getIntValue("BANK_TRANSFER_EXPIRY_MINUTES", 30);
+        LocalDateTime expiryThreshold = LocalDateTime.now().minusMinutes(expiryMinutes);
         List<com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod> transferMethods = List.of(
                 com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod.BANK_TRANSFER,
                 com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod.VIETQR
         );
 
         List<Order> expiredOrders = orderRepository.findByStatusAndPaymentMethodInAndCreatedAtBefore(
-                OrderStatus.PENDING, transferMethods, thirtyMinutesAgo);
+                OrderStatus.PENDING, transferMethods, expiryThreshold);
 
         for (Order order : expiredOrders) {
             rollbackStockForOrder(order, null, "Tự hủy: quá 30 phút chưa thanh toán");

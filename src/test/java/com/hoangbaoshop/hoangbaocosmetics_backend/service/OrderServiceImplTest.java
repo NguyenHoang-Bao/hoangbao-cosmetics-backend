@@ -15,8 +15,7 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.repository.OrderRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.ProductVariantRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
-
-import java.math.BigDecimal;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -27,6 +26,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -50,9 +50,19 @@ class OrderServiceImplTest {
     private InventoryLogRepository inventoryLogRepository;
     @Mock
     private EmailService emailService;
+    @Mock
+    private SystemSettingService systemSettingService;
 
     @InjectMocks
     private OrderServiceImpl orderService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(systemSettingService.getBigDecimalValue(eq("DEFAULT_SHIPPING_FEE"), any(BigDecimal.class)))
+                .thenReturn(BigDecimal.valueOf(30000));
+        lenient().when(systemSettingService.getBigDecimalValue(eq("FREE_SHIPPING_THRESHOLD"), any(BigDecimal.class)))
+                .thenReturn(BigDecimal.valueOf(500000));
+    }
 
     @AfterEach
     void tearDown() {
