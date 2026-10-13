@@ -33,6 +33,10 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     // lấy danh sách đơn hàng của user có phân trang
     Page<Order> findByUserUsername(String username, Pageable pageable);
 
+    // tìm các đơn hàng theo trạng thái, phương thức thanh toán và thời gian tạo trước một mốc (phục vụ quét hủy đơn quá hạn)
+    java.util.List<Order> findByStatusAndPaymentMethodInAndCreatedAtBefore(
+            OrderStatus status, java.util.List<com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod> methods, LocalDateTime before);
+
     // tìm kiếm đơn hàng cho admin/staff kèm bộ lọc và phân trang
     @Query("SELECT o FROM Order o WHERE " +
            "(:status IS NULL OR o.status = :status) AND " +

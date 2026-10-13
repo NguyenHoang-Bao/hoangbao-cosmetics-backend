@@ -89,7 +89,7 @@ class PaymentServiceImplTest {
         sepayConfig.setApiKey("secure_secret_123");
         SepayWebhookRequest request = SepayWebhookRequest.builder()
                 .transferType("in")
-                .content("Thanh toan don ORD-12345678")
+                .content("Thanh toan don HB20261013A1B2C3")
                 .referenceCode("TX-999")
                 .build();
 
@@ -109,7 +109,7 @@ class PaymentServiceImplTest {
         sepayConfig.setApiKey("secure_secret_123");
         SepayWebhookRequest request = SepayWebhookRequest.builder()
                 .transferType("in")
-                .content("Thanh toan ORD-12345678")
+                .content("Thanh toan HB20261013A1B2C3")
                 .referenceCode("TX-888")
                 .transferAmount(BigDecimal.valueOf(250000))
                 .gateway("MBBank")
@@ -117,13 +117,13 @@ class PaymentServiceImplTest {
 
         Order order = Order.builder()
                 .idOrder(1)
-                .orderCode("ORD-12345678")
+                .orderCode("HB20261013A1B2C3")
                 .totalAmount(BigDecimal.valueOf(250000))
                 .status(OrderStatus.PENDING)
                 .build();
 
         when(orderRepository.existsByTransactionId("TX-888")).thenReturn(false);
-        when(orderRepository.findByOrderCodeForUpdate("ORD-12345678")).thenReturn(Optional.of(order));
+        when(orderRepository.findByOrderCodeForUpdate("HB20261013A1B2C3")).thenReturn(Optional.of(order));
 
         // When
         boolean result = paymentService.processSepayWebhook(request, "Apikey secure_secret_123");
@@ -138,25 +138,106 @@ class PaymentServiceImplTest {
     }
 
     @Test
+    void processSepayWebhook_WhenCaseInsensitiveAndSpecialChars_MatchesAndProcessesSuccessfully() {
+        // Given: Nội dung chuyển khoản có chữ thường và ký tự thừa: "CK hb-20261013-a1b2c3"
+        sepayConfig.setApiKey("secure_secret_123");
+        SepayWebhookRequest request = SepayWebhookRequest.builder()
+                .transferType("in")
+                .content("CK hb-20261013-a1b2c3 thanh toan")
+                .referenceCode("TX-889")
+                .transferAmount(BigDecimal.valueOf(250000))
+                .gateway("MBBank")
+                .build();
+
+        Order order = Order.builder()
+                .idOrder(1)
+                .orderCode("HB20261013A1B2C3")
+                .totalAmount(BigDecimal.valueOf(250000))
+                .status(OrderStatus.PENDING)
+                .build();
+
+        when(orderRepository.existsByTransactionId("TX-889")).thenReturn(false);
+        when(orderRepository.findByOrderCodeForUpdate("HB20261013A1B2C3")).thenReturn(Optional.of(order));
+
+        // When
+        boolean result = paymentService.processSepayWebhook(request, "Apikey secure_secret_123");
+
+        // Then: Vẫn trích xuất chính xác mã đơn HB20261013A1B2C3
+        assertTrue(result);
+        assertEquals(OrderStatus.PROCESSING, order.getStatus());
+        verify(orderRepository).saveAndFlush(order);
+    }
+
+    @Test
+    void processSepayWebhook_WhenOrderCodeNotFound_ReturnsTrueToStopRetries() {
+        // Given: Giao dịch lạ không tìm thấy đơn
+        sepayConfig.setApiKey("secure_secret_123");
+        SepayWebhookRequest request = SepayWebhookRequest.builder()
+                .transferType("in")
+                .content("Chuyen tien mua hang khong ma don")
+                .referenceCode("TX-000")
+                .build();
+
+        // When
+        boolean result = paymentService.processSepayWebhook(request, "Apikey secure_secret_123");
+
+        // Then: Trả về true để SePay không gửi lại liên tục
+        assertTrue(result);
+        verify(orderRepository, never()).findByOrderCodeForUpdate(any());
+    }
+
+    @Test
+    void processSepayWebhook_WhenDuplicatePaymentToProcessingOrder_AppendsRefundNote() {
+        // Given: Đơn đã PROCESSING nhưng khách chuyển thêm lần 2
+        sepayConfig.setApiKey("secure_secret_123");
+        SepayWebhookRequest request = SepayWebhookRequest.builder()
+                .transferType("in")
+                .content("Thanh toan HB20261013A1B2C3 lan 2")
+                .referenceCode("TX-555")
+                .transferAmount(BigDecimal.valueOf(250000))
+                .build();
+
+        Order order = Order.builder()
+                .idOrder(1)
+                .orderCode("HB20261013A1B2C3")
+                .totalAmount(BigDecimal.valueOf(250000))
+                .status(OrderStatus.PROCESSING)
+                .note("[ĐÃ THANH TOÁN]: Nhận 250,000 VNĐ")
+                .build();
+
+        when(orderRepository.existsByTransactionId("TX-555")).thenReturn(false);
+        when(orderRepository.findByOrderCodeForUpdate("HB20261013A1B2C3")).thenReturn(Optional.of(order));
+
+        // When
+        boolean result = paymentService.processSepayWebhook(request, "Apikey secure_secret_123");
+
+        // Then: Ghi thêm note CHUYỂN TRÙNG và lưu vào DB
+        assertTrue(result);
+        assertTrue(order.getNote().contains("[CHUYỂN TRÙNG - CẦN HOÀN]"));
+        assertTrue(order.getNote().contains("TX-555"));
+        verify(orderRepository).saveAndFlush(order);
+    }
+
+    @Test
     void processSepayWebhook_WhenUnderpaid_RecordsTxIdAndReturnsTrueToStopRetries() {
         // Given
         sepayConfig.setApiKey("secure_secret_123");
         SepayWebhookRequest request = SepayWebhookRequest.builder()
                 .transferType("in")
-                .content("Thanh toan ORD-12345678")
+                .content("Thanh toan HB20261013A1B2C3")
                 .referenceCode("TX-777")
                 .transferAmount(BigDecimal.valueOf(100000))
                 .build();
 
         Order order = Order.builder()
                 .idOrder(1)
-                .orderCode("ORD-12345678")
+                .orderCode("HB20261013A1B2C3")
                 .totalAmount(BigDecimal.valueOf(250000))
                 .status(OrderStatus.PENDING)
                 .build();
 
         when(orderRepository.existsByTransactionId("TX-777")).thenReturn(false);
-        when(orderRepository.findByOrderCodeForUpdate("ORD-12345678")).thenReturn(Optional.of(order));
+        when(orderRepository.findByOrderCodeForUpdate("HB20261013A1B2C3")).thenReturn(Optional.of(order));
 
         // When
         boolean result = paymentService.processSepayWebhook(request, "Apikey secure_secret_123");
@@ -175,20 +256,20 @@ class PaymentServiceImplTest {
         sepayConfig.setApiKey("secure_secret_123");
         SepayWebhookRequest request = SepayWebhookRequest.builder()
                 .transferType("in")
-                .content("Thanh toan ORD-12345678")
+                .content("Thanh toan HB20261013A1B2C3")
                 .referenceCode("TX-666")
                 .transferAmount(BigDecimal.valueOf(250000))
                 .build();
 
         Order order = Order.builder()
                 .idOrder(1)
-                .orderCode("ORD-12345678")
+                .orderCode("HB20261013A1B2C3")
                 .totalAmount(BigDecimal.valueOf(250000))
                 .status(OrderStatus.PENDING)
                 .build();
 
         when(orderRepository.existsByTransactionId("TX-666")).thenReturn(false);
-        when(orderRepository.findByOrderCodeForUpdate("ORD-12345678")).thenReturn(Optional.of(order));
+        when(orderRepository.findByOrderCodeForUpdate("HB20261013A1B2C3")).thenReturn(Optional.of(order));
         doThrow(new DataIntegrityViolationException("Duplicate entry 'TX-666' for key uk_orders_transaction"))
                 .when(orderRepository).saveAndFlush(any());
 
