@@ -143,12 +143,12 @@ class OrderServiceImplTest {
         verify(productVariantRepository, times(1)).findAllWithProductByIdIn(anyCollection());
         verify(inventoryLogRepository, times(1)).saveAll(anyList());
 
-        // Verify P5: order code matches date-based format ORD-yyyyMMdd-XXXXXX and requires NO findByOrderCode query
+        // Verify: order code matches date-based format HB + yyyyMMdd + XXXXXX and requires NO findByOrderCode query
         assertNotNull(response);
         assertNotNull(response.getOrderCode());
         org.junit.jupiter.api.Assertions.assertTrue(
-                response.getOrderCode().matches("^ORD-\\d{8}-[A-Z0-9]{6}$"),
-                "Mã đơn hàng phải tuân theo định dạng chuẩn ngày ORD-YYYYMMDD-XXXXXX"
+                response.getOrderCode().matches("^HB\\d{8}[A-Z0-9]{6}$"),
+                "Mã đơn hàng phải tuân theo định dạng chuẩn HB-YYYYMMDD-XXXXXX không có ký tự đặc biệt"
         );
         verify(orderRepository, never()).findByOrderCode(anyString());
     }

@@ -323,6 +323,33 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponse(savedOrder);
     }
 
+    // quét và tự động hủy các đơn chuyển khoản ngân hàng quá hạn thanh toán 30 phút, hoàn tồn kho
+    @Override
+    @Transactional
+    public int cancelExpiredBankTransferOrders() {
+        LocalDateTime thirtyMinutesAgo = LocalDateTime.now().minusMinutes(30);
+        List<com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod> transferMethods = List.of(
+                com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod.BANK_TRANSFER,
+                com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod.VIETQR
+        );
+
+        List<Order> expiredOrders = orderRepository.findByStatusAndPaymentMethodInAndCreatedAtBefore(
+                OrderStatus.PENDING, transferMethods, thirtyMinutesAgo);
+
+        for (Order order : expiredOrders) {
+            rollbackStockForOrder(order, null, "Tự hủy: quá 30 phút chưa thanh toán");
+            order.setStatus(OrderStatus.CANCELLED);
+            String cancelNote = "[HỆ THỐNG]: Tự động hủy do quá 30 phút chưa thanh toán";
+            String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
+            order.setNote(currentNote + cancelNote);
+        }
+
+        if (!expiredOrders.isEmpty()) {
+            orderRepository.saveAll(expiredOrders);
+        }
+        return expiredOrders.size();
+    }
+
     // ==================== HELPER METHODS ====================
 
     // kiểm tra hợp lệ khi chuyển đổi trạng thái đơn hàng
@@ -441,7 +468,7 @@ public class OrderServiceImpl implements OrderService {
     private String generateOrderCode() {
         String datePart = LocalDate.now().format(ORDER_DATE_FORMATTER);
         String randomPart = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
-        return "ORD-" + datePart + "-" + randomPart;
+        return "HB" + datePart + randomPart;
     }
 
     // hàm chung map entity sang dto

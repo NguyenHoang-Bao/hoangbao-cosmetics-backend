@@ -1,0 +1,12 @@
+# Cấu hình môi trường Production cho Hoang Bao Cosmetics Backend
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate # Không tự động sửa schema database thật trên Production
+
+# Vô hiệu hóa Swagger / OpenAPI UI trên môi trường thật để chống rò rỉ schema
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

@@ -24,7 +24,7 @@ public class OtpCleanupScheduler {
      * Chạy định kỳ vào 02:00:00 sáng mỗi ngày (giờ thấp điểm ít người dùng).
      * Cron expression: Giây (0) Phút (0) Giờ (2) Ngày-trong-tháng (*) Tháng (*) Thứ (?)
      */
-    @Scheduled(cron = "0 0 2 * * ?")
+    @Scheduled(cron = "0 0 2 * * ?", zone = "Asia/Ho_Chi_Minh")
     public void cleanupExpiredOtpTokens() {
         log.info("[CronJob] Bắt đầu quét và dọn dẹp mã OTP hết hạn / đã sử dụng...");
         LocalDateTime now = LocalDateTime.now();

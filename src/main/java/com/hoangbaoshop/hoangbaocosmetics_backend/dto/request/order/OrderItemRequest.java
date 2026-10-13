@@ -1,5 +1,6 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.order;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -16,5 +17,6 @@ public class OrderItemRequest {
 
     @NotNull(message = "Số lượng không được để trống")
     @Min(value = 1, message = "Số lượng phải lớn hơn hoặc bằng 1")
+    @Max(value = 10, message = "Số lượng mỗi sản phẩm tối đa là 10")
     private Integer quantity;
 }

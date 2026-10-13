@@ -32,7 +32,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final OrderRepository orderRepository;
     private final PaymentProperties paymentProperties;
 
-    private static final Pattern ORDER_CODE_PATTERN = Pattern.compile("ORD-[A-Za-z0-9]+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ORDER_CODE_PATTERN = Pattern.compile("HB\\d{8}[A-Z0-9]{6}");
 
     // tạo mã qr chuyển khoản ngân hàng tự động (VietQR QuickLink)
     @Override
@@ -119,22 +119,20 @@ public class PaymentServiceImpl implements PaymentService {
             return true;
         }
 
-        // 3. Trích xuất mã đơn hàng từ nội dung chuyển khoản
+        // 3. Trích xuất mã đơn hàng từ nội dung chuyển khoản (chuẩn hóa xóa mọi ký tự đặc biệt)
         String content = request.getContent();
         if (content == null || content.isBlank()) {
             log.warn("SePay Webhook: Nội dung giao dịch trống");
-            return false;
+            return true;
         }
 
-        Matcher matcher = ORDER_CODE_PATTERN.matcher(content);
-        String orderCode = null;
-        if (matcher.find()) {
-            orderCode = matcher.group().toUpperCase();
-        }
+        String normalized = content.toUpperCase().replaceAll("[^A-Z0-9]", "");
+        Matcher matcher = ORDER_CODE_PATTERN.matcher(normalized);
+        String orderCode = matcher.find() ? matcher.group() : null;
 
         if (orderCode == null) {
-            log.info("SePay Webhook: Không tìm thấy mã đơn dạng ORD-XXXXXXXX trong nội dung: '{}'", content);
-            return false;
+            log.info("SePay Webhook: Không tìm thấy mã đơn dạng HB... trong nội dung: '{}'", content);
+            return true;
         }
 
         // 4. Trích xuất mã giao dịch duy nhất từ SePay
@@ -152,7 +150,7 @@ public class PaymentServiceImpl implements PaymentService {
         Optional<Order> orderOpt = orderRepository.findByOrderCodeForUpdate(orderCode);
         if (orderOpt.isEmpty()) {
             log.warn("SePay Webhook: Không tìm thấy đơn hàng trong hệ thống với mã: {}", orderCode);
-            return false;
+            return true;
         }
 
         Order order = orderOpt.get();
@@ -175,9 +173,15 @@ public class PaymentServiceImpl implements PaymentService {
             return true;
         }
 
-        // 8. Nếu đơn đã ở trạng thái thanh toán rồi -> Bỏ qua
+        // 8. Nếu đơn đã ở trạng thái thanh toán rồi -> Ghi nhận chuyển trùng để kế toán đối soát hoàn tiền
         if (order.getStatus() != OrderStatus.PENDING) {
-            log.info("SePay Webhook: Đơn hàng {} đã ở trạng thái {} trước đó. Bỏ qua.", orderCode, order.getStatus());
+            log.info("SePay Webhook: Đơn hàng {} đã ở trạng thái {} trước đó.", orderCode, order.getStatus());
+            String note = order.getNote() != null ? order.getNote() : "";
+            if (!note.contains(txId)) {
+                order.setNote(note + String.format(" | [CHUYỂN TRÙNG - CẦN HOÀN]: %,.0f VNĐ (Mã GD: %s)",
+                        transferAmount.doubleValue(), txId));
+                orderRepository.saveAndFlush(order);
+            }
             return true;
         }
 

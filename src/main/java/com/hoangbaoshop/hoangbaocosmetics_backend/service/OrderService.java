@@ -44,4 +44,7 @@ public interface OrderService {
 
     // tạo đơn hàng bán tại quầy (POS) cho nhân viên
     OrderResponse createPosOrder(CreatePosOrderRequest request, String staffUsername);
+
+    // quét và tự động hủy các đơn chuyển khoản ngân hàng quá hạn thanh toán 30 phút, hoàn tồn kho
+    int cancelExpiredBankTransferOrders();
 }

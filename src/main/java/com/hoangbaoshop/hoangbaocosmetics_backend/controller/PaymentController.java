@@ -46,9 +46,9 @@ public class PaymentController {
                     "message", "Webhook processed successfully"
             ));
         } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
                     "success", false,
-                    "message", "Webhook processing skipped or failed"
+                    "message", "Webhook processing rejected: Unauthorized"
             ));
         }
     }

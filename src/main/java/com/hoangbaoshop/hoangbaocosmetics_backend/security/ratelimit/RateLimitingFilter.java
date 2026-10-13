@@ -37,6 +37,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final Map<String, RequestCounter> authRateLimitMap = new ConcurrentHashMap<>();
     private final Map<String, RequestCounter> orderLookupRateLimitMap = new ConcurrentHashMap<>();
+    private final Map<String, RequestCounter> orderCreateRateLimitMap = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
 
     public RateLimitingFilter() {
@@ -80,6 +81,15 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             }
         }
 
+        // 3. Giới hạn tần suất cho POST /api/orders (tạo đơn hàng mới - chống spam / cạn kho)
+        if ("POST".equalsIgnoreCase(method) && "/api/orders".equals(path)) {
+            if (!isAllowed(orderCreateRateLimitMap, clientIp, 5)) {
+                log.warn("Rate limit vượt ngưỡng cho tạo đơn hàng từ IP: {} (Path: {})", clientIp, path);
+                sendTooManyRequestsResponse(response, "Bạn đặt hàng quá nhanh, thử lại sau 1 phút!");
+                return;
+            }
+        }
+
         filterChain.doFilter(request, response);
     }
 
@@ -103,14 +113,6 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader != null && !xfHeader.isBlank()) {
-            return xfHeader.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
         return request.getRemoteAddr();
     }
 
