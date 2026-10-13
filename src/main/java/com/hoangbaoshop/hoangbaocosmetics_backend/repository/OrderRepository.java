@@ -34,6 +34,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     Page<Order> findByUserUsername(String username, Pageable pageable);
 
     // tìm các đơn hàng theo trạng thái, phương thức thanh toán và thời gian tạo trước một mốc (phục vụ quét hủy đơn quá hạn)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     java.util.List<Order> findByStatusAndPaymentMethodInAndCreatedAtBefore(
             OrderStatus status, java.util.List<com.hoangbaoshop.hoangbaocosmetics_backend.enums.PaymentMethod> methods, LocalDateTime before);
 
