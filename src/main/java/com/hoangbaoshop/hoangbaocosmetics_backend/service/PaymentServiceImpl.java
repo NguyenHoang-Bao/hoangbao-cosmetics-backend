@@ -12,6 +12,9 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.exception.ResourceNotFoundExce
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +22,10 @@ import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.springframework.dao.DataIntegrityViolationException;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +34,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final OrderRepository orderRepository;
     private final PaymentProperties paymentProperties;
+
+    @Autowired(required = false)
+    private StringRedisTemplate redisTemplate;
 
     private static final Pattern ORDER_CODE_PATTERN = Pattern.compile("HB\\d{8}[A-Z0-9]{6}");
 
@@ -139,6 +145,22 @@ public class PaymentServiceImpl implements PaymentService {
         String txId = request.getReferenceCode() != null && !request.getReferenceCode().isBlank()
                 ? request.getReferenceCode().trim()
                 : String.valueOf(request.getId());
+
+        // Fast Distributed Lock (Redis Idempotency Guard):
+        // Chặn trùng lặp webhook SePay ngay tại tầng Redis trước khi chạm vào Database.
+        // TTL 30 giây để bao phủ toàn bộ vòng đời xử lý và ngăn chặn spike từ retry của SePay.
+        String lockKey = "lock:sepay:" + txId;
+        if (redisTemplate != null) {
+            try {
+                Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.ofSeconds(30));
+                if (Boolean.FALSE.equals(acquired)) {
+                    log.warn("SePay Webhook (Redis Lock): Giao dịch '{}' đang được xử lý hoặc đã được xử lý trước đó. Bỏ qua để tránh duplicate processing.", txId);
+                    return true;
+                }
+            } catch (Exception e) {
+                log.warn("Redis lock error for SePay webhook (fallback to DB lock): {}", e.getMessage());
+            }
+        }
 
         // 5. Kiểm tra Idempotency: Nếu mã giao dịch (txId) này đã được xử lý trước đó -> Bỏ qua ngay
         if (orderRepository.existsByTransactionId(txId)) {

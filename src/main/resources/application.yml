@@ -31,6 +31,26 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
     locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
+          max-wait: 1000ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000ms # 10 phút (600.000 ms)
+      cache-null-values: false # Chống lãng phí RAM khi kết quả rỗng
+
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}

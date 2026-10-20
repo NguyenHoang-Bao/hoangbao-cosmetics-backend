@@ -88,6 +88,17 @@ public class AuthController {
         }
     }
 
+    // [POST] đăng xuất tài khoản và đưa JWT vào Redis blacklist
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout(jakarta.servlet.http.HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            authService.logout(token);
+        }
+        return ResponseEntity.ok(ApiResponse.success(null, "Đăng xuất thành công!"));
+    }
+
     private String buildVerificationSuccessHtml() {
         return """
             <!DOCTYPE html>
