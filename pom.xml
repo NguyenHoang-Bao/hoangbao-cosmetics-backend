@@ -131,6 +131,18 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- 1. Bộ khung điều phối cốt lõi của Flyway (Quản lý version, đọc file SQL, tính Checksum) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <!-- 2. Module mở rộng hỗ trợ riêng cho cơ sở dữ liệu MySQL (Tương thích MySQL 8.x) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
