@@ -1,4 +1,4 @@
-# 🌸 HOÀNG BẢO COSMETICS - ENTERPRISE E-COMMERCE BACKEND
+# HOÀNG BẢO COSMETICS - ENTERPRISE E-COMMERCE BACKEND
 
 > **Hệ thống Backend Bán lẻ & Thương mại Điện tử Mỹ phẩm Đa kênh (Omnichannel: Web Storefront + POS Quầy)**  
 > Được thiết kế và xây dựng theo chuẩn kiến trúc doanh nghiệp với Spring Boot 3, Java 17, và MySQL.
