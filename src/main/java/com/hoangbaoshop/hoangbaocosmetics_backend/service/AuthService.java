@@ -30,4 +30,7 @@ public interface AuthService {
 
     // xác thực tài khoản qua liên kết 1-click gửi trong email
     void verifyEmailToken(String token);
+
+    // đăng xuất tài khoản và đưa token vào Redis blacklist
+    void logout(String token);
 }

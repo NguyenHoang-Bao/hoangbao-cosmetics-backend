@@ -60,6 +60,9 @@ public class AuthServiceImpl implements AuthService {
     private final OtpTokenRepository otpTokenRepository;
     private final EmailService emailService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
     @Value("${google.client-id}")
     private String googleClientId;
 
@@ -500,6 +503,25 @@ public class AuthServiceImpl implements AuthService {
             });
         } else {
             action.run();
+        }
+    }
+
+    @Override
+    public void logout(String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        try {
+            if (jwtUtils.validateJwtToken(token)) {
+                java.util.Date expiration = jwtUtils.getExpirationDateFromJwtToken(token);
+                long remainingMillis = expiration.getTime() - System.currentTimeMillis();
+                if (remainingMillis > 0 && redisTemplate != null) {
+                    redisTemplate.opsForValue().set("blacklist:jwt:" + token, "LOGGED_OUT", java.time.Duration.ofMillis(remainingMillis));
+                    log.info("Token đã được đưa vào blacklist Redis với thời hạn {} ms", remainingMillis);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Lỗi khi đưa token vào blacklist: {}", e.getMessage());
         }
     }
 }

@@ -60,6 +60,18 @@ public class JwtUtils {
     }
 
     /**
+     * Lấy thời điểm hết hạn (Expiration Date) của token để tính TTL cho Redis Blacklist
+     */
+    public Date getExpirationDateFromJwtToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
+    }
+
+    /**
      * Xác thực tính hợp lệ của token
      */
     public boolean validateJwtToken(String authToken) {

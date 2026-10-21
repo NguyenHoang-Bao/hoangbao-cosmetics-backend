@@ -8,6 +8,8 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.exception.ResourceNotFoundExce
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.BrandRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ public class BrandServiceImpl implements BrandService {
     // get all brand
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "brands", key = "'all'")
     public List<BrandResponse> getAllBrands() {
         return brandRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -42,6 +45,7 @@ public class BrandServiceImpl implements BrandService {
     //create brand
     @Override
     @Transactional
+    @CacheEvict(value = "brands", allEntries = true)
     public BrandResponse createBrand(BrandRequest request) {
         if (brandRepository.existsByName(request.getName().trim())) {
             throw new BadRequestException("Tên thương hiệu đã tồn tại: " + request.getName());
@@ -59,6 +63,7 @@ public class BrandServiceImpl implements BrandService {
     // update brand's name
     @Override
     @Transactional
+    @CacheEvict(value = "brands", allEntries = true)
     public BrandResponse updateBrand(Integer id, BrandRequest request) {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu với ID: " + id));
@@ -80,6 +85,7 @@ public class BrandServiceImpl implements BrandService {
     // delete brand
     @Override
     @Transactional
+    @CacheEvict(value = "brands", allEntries = true)
     public void deleteBrand(Integer id) {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu với ID: " + id));

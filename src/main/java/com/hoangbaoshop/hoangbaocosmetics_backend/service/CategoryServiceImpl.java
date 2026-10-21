@@ -8,6 +8,8 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.exception.ResourceNotFoundExce
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.CategoryRepository;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ public class CategoryServiceImpl implements CategoryService {
     // get all category
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "categories", key = "'all'")
     public List<CategoryResponse> getAllCategories() {
         return categoryRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -46,6 +49,7 @@ public class CategoryServiceImpl implements CategoryService {
     // create category
     @Override
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryResponse createCategory(CategoryRequest request) {
         if (categoryRepository.existsByName(request.getName().trim())) {
             throw new BadRequestException("Tên danh mục đã tồn tại: " + request.getName());
@@ -71,6 +75,7 @@ public class CategoryServiceImpl implements CategoryService {
     // update category's name
     @Override
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryResponse updateCategory(Integer id, CategoryRequest request) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với ID: " + id));
@@ -97,6 +102,7 @@ public class CategoryServiceImpl implements CategoryService {
     // delete category
     @Override
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public void deleteCategory(Integer id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với ID: " + id));
