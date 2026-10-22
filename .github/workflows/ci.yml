@@ -1,28 +1,31 @@
 name: Backend CI
 
-#Kích hoạt khi push vào main/feature hoặc tạo pull request vào main
+# Kích hoạt khi push vào main/feature hoặc tạo pull request vào main
 on:
   push:
     branches:
       - main
       - feature/*
       - feature/**
-    pull_request:
-      branches:
-        - main
-# Hủy lượt chạy cũ nếu có commit mới liên tục(tiết kiệm tài nguyên)
+  pull_request:
+    branches:
+      - main
+
+# Hủy lượt chạy cũ nếu có commit mới liên tục (tiết kiệm tài nguyên)
 concurrency:
-  group: ${{ github.workflow}}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test-and-build:
     name: Test & Build (Java 17 & Testcontainers)
     runs-on: ubuntu-latest # Máy ảo Linux có sẵn Docker daemon cho Testcontainers
+
     steps:
       # 1. Tải code về máy ảo
       - name: Checkout code
         uses: actions/checkout@v4
+
       # 2. Cài đặt JDK 17 (Eclipse Temurin) và bật cache Maven để tăng tốc
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -30,12 +33,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'maven'
+
       # 3. Cấp quyền thực thi cho file Maven Wrapper trên Linux
       - name: Make Maven wrapper executable
         run: chmod +x mvnw
+
       # 4. Chạy toàn bộ Unit & Integration Tests (Testcontainers + Flyway) và đóng gói JAR
       - name: Run Tests & Verify
         run: ./mvnw clean verify
+
       # 5. Lưu trữ file JAR thành phẩm làm Artifact tải về trực tiếp từ GitHub
       - name: Upload Build Artifact
         if: success()
