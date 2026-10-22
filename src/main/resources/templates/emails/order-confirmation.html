@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác Nhận Đơn Hàng</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background-color: #F5F5F7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.65;
+        }
+
+        .email-container {
+            width: 100%;
+            padding: 48px 16px;
+            box-sizing: border-box;
+            background-color: #F5F5F7;
+        }
+
+        .email-card {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #FFFFFF;
+            border-radius: 18px;
+            padding: 44px 40px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            box-sizing: border-box;
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .brand-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: #86868B;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin: 0;
+        }
+
+        .main-content {
+            text-align: left;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1D1D1F;
+            margin: 0 0 10px 0;
+            text-align: center;
+            line-height: 1.35;
+        }
+
+        .text {
+            font-size: 15px;
+            line-height: 1.65;
+            color: #1D1D1F;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+
+        .info-box {
+            background-color: #F5F5F7;
+            border-radius: 14px;
+            padding: 24px 26px;
+            margin: 24px 0;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .info-label {
+            color: #86868B;
+            padding: 6px 0;
+            width: 36%;
+            vertical-align: top;
+        }
+
+        .info-value {
+            color: #1D1D1F;
+            font-weight: 600;
+            padding: 6px 0;
+            vertical-align: top;
+        }
+
+        .items-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1D1D1F;
+            margin: 30px 0 12px 0;
+        }
+
+        .product-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .product-table th {
+            font-size: 11px;
+            font-weight: 600;
+            color: #86868B;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 12px 8px;
+            border-bottom: 1px solid #D2D2D7;
+            text-align: left;
+        }
+
+        .summary-box {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #D2D2D7;
+            text-align: right;
+            font-size: 13px;
+        }
+
+        .summary-row {
+            padding: 5px 0;
+            color: #86868B;
+            line-height: 1.6;
+        }
+
+        .grand-total {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1D1D1F;
+            margin-top: 10px;
+        }
+
+        .footer {
+            margin-top: 36px;
+            padding-top: 24px;
+            border-top: 1px solid #D2D2D7;
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 12px;
+            color: #86868B;
+            margin: 0 0 6px 0;
+            line-height: 1.5;
+        }
+
+        .footer-link {
+            color: #0066CC;
+            text-decoration: none;
+        }
+
+        @media only screen and (max-width: 520px) {
+            .email-card {
+                padding: 36px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-card">
+            <div class="brand-header">
+                <p class="brand-name">Hoàng Bảo Cosmetics</p>
+            </div>
+            <div class="main-content">
+                <h1 class="title">Xác Nhận Đơn Hàng</h1>
+                <p class="text">Xin chào <strong th:text="${order.customerName != null ? order.customerName : 'Quý khách'}">Quý khách</strong>, đơn hàng của bạn đã được hệ thống tiếp nhận thành công.</p>
+                
+                <div class="info-box">
+                    <table class="info-table">
+                        <tr>
+                            <td class="info-label">Mã đơn hàng:</td>
+                            <td class="info-value" th:text="${order.orderCode}">HB20261023ABCDEF</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Thời gian đặt:</td>
+                            <td class="info-value" style="font-weight: 400;" th:text="${formattedCreatedAt}">14:30:00 23/10/2026</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Số điện thoại:</td>
+                            <td class="info-value" style="font-weight: 400;" th:text="${order.phoneNumber != null ? order.phoneNumber : '---'}">0901234567</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Địa chỉ giao hàng:</td>
+                            <td class="info-value" style="font-weight: 400;" th:text="${order.deliveryAddress != null ? order.deliveryAddress : 'Tại cửa hàng'}">Tại cửa hàng</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Phương thức thanh toán:</td>
+                            <td class="info-value" th:text="${order.paymentMethod != null ? order.paymentMethod : 'COD'}">COD</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="items-title">Chi tiết sản phẩm</div>
+                <table class="product-table">
+                    <thead>
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th style="text-align: center;">SL</th>
+                            <th style="text-align: right;">Đơn giá</th>
+                            <th style="text-align: right;">Tạm tính</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="item : ${order.items}">
+                            <td style="padding: 14px 8px; border-bottom: 1px solid #E5E5EA; color: #1D1D1F; font-weight: 500; line-height: 1.5;">
+                                <span th:text="${item.productName != null ? item.productName : 'Sản phẩm'}">Tên sản phẩm</span>
+                                <span th:if="${item.capacity != null and !item.capacity.isBlank()}" th:text="' (' + ${item.capacity} + ')'"> (50ml)</span>
+                            </td>
+                            <td style="padding: 14px 8px; border-bottom: 1px solid #E5E5EA; text-align: center; color: #86868B; white-space: nowrap;" th:text="${item.quantity}">1</td>
+                            <td style="padding: 14px 8px; border-bottom: 1px solid #E5E5EA; text-align: right; color: #86868B; white-space: nowrap;" th:text="${formatter.format(item.price) + ' đ'}">100.000 đ</td>
+                            <td style="padding: 14px 8px; border-bottom: 1px solid #E5E5EA; text-align: right; font-weight: 600; color: #1D1D1F; white-space: nowrap;" th:text="${formatter.format(item.lineTotal) + ' đ'}">100.000 đ</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="summary-box">
+                    <div class="summary-row">Phí vận chuyển: <strong style="color: #1D1D1F;" th:text="${formatter.format(order.shippingFee) + ' đ'}">30.000 đ</strong></div>
+                    <div class="grand-total" th:text="'Tổng thanh toán: ' + ${formatter.format(order.totalAmount) + ' đ'}">Tổng thanh toán: 350.000 đ</div>
+                </div>
+            </div>
+            <div class="footer">
+                <p>Bản quyền © 2026 Hoàng Bảo Cosmetics. Cam kết chính hãng 100%.</p>
+                <p>Hotline CSKH: 0359 490 221 | <a href="mailto:support@hoangbaocosmetics.vn" class="footer-link">support@hoangbaocosmetics.vn</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
