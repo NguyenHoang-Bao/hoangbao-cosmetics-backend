@@ -1,4 +1,4 @@
-name: Backend CD (Build & Push Docker)
+name: Backend CD (Build, Push & Deploy AWS)
 
 # Kích hoạt khi code được push hoặc merge vào nhánh main
 on:
@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Job 1: Build Docker Image và đẩy lên kho Docker Hub
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
@@ -29,15 +30,15 @@ jobs:
           java-version: '17'
           cache: 'maven'
 
-      # 3. Cấp quyền thực thi cho file Maven Wrapper trên Linux
+      # 3. Cấp quyền thực thi cho Maven Wrapper
       - name: Make Maven wrapper executable
         run: chmod +x mvnw
 
-      # 4. Đóng gói ra file JAR thành phẩm (bỏ qua test vì đã được CI kiểm tra trước khi merge)
+      # 4. Đóng gói ra file JAR thành phẩm
       - name: Package JAR
         run: ./mvnw clean package -DskipTests
 
-      # 5. Cài đặt công cụ Docker Buildx để tăng tốc đóng gói image
+      # 5. Cài đặt công cụ Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -60,3 +61,22 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/hoangbaocosmetics-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Job 2: SSH vào máy chủ AWS EC2 để kéo image mới và restart container
+  deploy-to-aws:
+    name: Deploy to AWS EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH and Deploy Container on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu
+            docker compose pull backend
+            docker compose up -d --no-deps backend
+            docker image prune -f
