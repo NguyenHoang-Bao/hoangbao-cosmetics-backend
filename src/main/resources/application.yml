@@ -102,6 +102,11 @@ payment:
 google:
   client-id: "${GOOGLE_CLIENT_ID:237683305659-mv2f4c61lghtdahblnffl6f6tbn6p66m.apps.googleusercontent.com}"
 
+# Cau hinh OAuth Facebook
+facebook:
+  app-id: "${FACEBOOK_APP_ID:1406066701717025}"
+  app-secret: "${FACEBOOK_APP_SECRET:}"
+
 # Cấu hình Spring Boot Actuator (Healthcheck cho Docker/Render/Railway)
 management:
   endpoints:
