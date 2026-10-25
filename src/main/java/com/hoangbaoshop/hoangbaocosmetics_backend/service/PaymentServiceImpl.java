@@ -207,14 +207,22 @@ public class PaymentServiceImpl implements PaymentService {
             return true;
         }
 
-        // 9. Kiểm tra số tiền chuyển có đủ không
-        if (transferAmount.compareTo(order.getTotalAmount()) < 0) {
-            log.warn("SePay Webhook: Số tiền chuyển ({} VNĐ) không đủ cho đơn hàng {} (yêu cầu {} VNĐ)",
-                    String.format("%,.0f", transferAmount.doubleValue()), orderCode, String.format("%,.0f", order.getTotalAmount().doubleValue()));
+        // 9. Cộng dồn số tiền đã nhận và kiểm tra đủ hay chưa
+        BigDecimal currentPaid = order.getPaidAmount() != null ? order.getPaidAmount() : BigDecimal.ZERO;
+        BigDecimal newTotalPaid = currentPaid.add(transferAmount);
+        order.setPaidAmount(newTotalPaid);
+
+        if (newTotalPaid.compareTo(order.getTotalAmount()) < 0) {
+            BigDecimal remaining = order.getTotalAmount().subtract(newTotalPaid);
+            log.warn("SePay Webhook: Đơn hàng {} nhận thêm {} VNĐ (tổng nhận: {}/{}, còn thiếu {} VNĐ)",
+                    orderCode, String.format("%,.0f", transferAmount.doubleValue()),
+                    String.format("%,.0f", newTotalPaid.doubleValue()),
+                    String.format("%,.0f", order.getTotalAmount().doubleValue()),
+                    String.format("%,.0f", remaining.doubleValue()));
             order.setWebhookStatus("UNDERPAID");
             order.setTransactionId(txId);
-            String underpaidNote = String.format("[CẢNH BÁO]: Khách chuyển thiếu tiền. Nhận: %,.0f VNĐ, Cần: %,.0f VNĐ (Mã GD: %s)",
-                    transferAmount.doubleValue(), order.getTotalAmount().doubleValue(), txId);
+            String underpaidNote = String.format("[CẢNH BÁO]: Khách chuyển thiếu tiền. Đợt này nhận: %,.0f VNĐ, Tổng nhận: %,.0f/%,.0f VNĐ, Còn thiếu: %,.0f VNĐ (Mã GD: %s)",
+                    transferAmount.doubleValue(), newTotalPaid.doubleValue(), order.getTotalAmount().doubleValue(), remaining.doubleValue(), txId);
             String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
             order.setNote(currentNote + underpaidNote);
             try {
@@ -225,15 +233,15 @@ public class PaymentServiceImpl implements PaymentService {
             return true;
         }
 
-        // 10. Cập nhật đơn hàng sang PROCESSING và ghi nhận giao dịch thành công
+        // 10. Đã nhận đủ tiền (sau 1 hoặc nhiều lần chuyển bù) -> Cập nhật sang PROCESSING
         order.setStatus(OrderStatus.PROCESSING);
         order.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
         order.setTransactionId(txId);
         order.setWebhookStatus("SUCCESS");
 
         String gatewayName = request.getGateway() != null ? request.getGateway() : "Ngân hàng";
-        String successNote = String.format("[ĐÃ THANH TOÁN]: Nhận %,.0f VNĐ qua %s, Mã GD: %s",
-                transferAmount.doubleValue(), gatewayName, txId);
+        String successNote = String.format("[ĐÃ THANH TOÁN ĐỦ]: Đợt này nhận %,.0f VNĐ qua %s (Tổng nhận: %,.0f VNĐ), Mã GD: %s",
+                transferAmount.doubleValue(), gatewayName, newTotalPaid.doubleValue(), txId);
         String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
         order.setNote(currentNote + successNote);
 
@@ -244,8 +252,8 @@ public class PaymentServiceImpl implements PaymentService {
             return true;
         }
 
-        log.info("SePay Webhook: Xác nhận thanh toán thành công cho đơn hàng {} với số tiền {} VNĐ (Mã GD: {})!",
-                orderCode, String.format("%,.0f", transferAmount), txId);
+        log.info("SePay Webhook: Xác nhận thanh toán thành công cho đơn hàng {} với tổng số tiền {} VNĐ (Mã GD: {})!",
+                orderCode, String.format("%,.0f", newTotalPaid), txId);
         return true;
     }
 }

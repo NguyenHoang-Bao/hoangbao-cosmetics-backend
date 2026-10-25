@@ -246,7 +246,45 @@ class PaymentServiceImplTest {
         assertTrue(result);
         assertEquals("UNDERPAID", order.getWebhookStatus());
         assertEquals("TX-777", order.getTransactionId());
+        assertEquals(BigDecimal.valueOf(100000), order.getPaidAmount());
         assertTrue(order.getNote().contains("[CẢNH BÁO]: Khách chuyển thiếu tiền"));
+        verify(orderRepository).saveAndFlush(order);
+    }
+
+    @Test
+    void processSepayWebhook_WhenUnderpaidOrderReceivesComplementaryTransfer_TransitionsToProcessing() {
+        // Given: Đơn đã nhận 100,000 trước đó (thiếu 150,000)
+        sepayConfig.setApiKey("secure_secret_123");
+        SepayWebhookRequest request = SepayWebhookRequest.builder()
+                .transferType("in")
+                .content("Thanh toan don HB20261013A1B2C3")
+                .referenceCode("TX-COMPLEMENTARY-888")
+                .transferAmount(BigDecimal.valueOf(150000))
+                .build();
+
+        Order order = Order.builder()
+                .idOrder(1)
+                .orderCode("HB20261013A1B2C3")
+                .totalAmount(BigDecimal.valueOf(250000))
+                .paidAmount(BigDecimal.valueOf(100000))
+                .status(OrderStatus.PENDING)
+                .webhookStatus("UNDERPAID")
+                .note("[CẢNH BÁO]: Khách chuyển thiếu tiền đợt 1")
+                .build();
+
+        when(orderRepository.existsByTransactionId("TX-COMPLEMENTARY-888")).thenReturn(false);
+        when(orderRepository.findByOrderCodeForUpdate("HB20261013A1B2C3")).thenReturn(Optional.of(order));
+
+        // When: Khách chuyển bù đủ 150,000 còn lại
+        boolean result = paymentService.processSepayWebhook(request, "Apikey secure_secret_123");
+
+        // Then: Đơn hàng tự động nâng cấp trạng thái lên PROCESSING và SUCCESS
+        assertTrue(result);
+        assertEquals(BigDecimal.valueOf(250000), order.getPaidAmount());
+        assertEquals(OrderStatus.PROCESSING, order.getStatus());
+        assertEquals("SUCCESS", order.getWebhookStatus());
+        assertEquals("TX-COMPLEMENTARY-888", order.getTransactionId());
+        assertTrue(order.getNote().contains("[ĐÃ THANH TOÁN ĐỦ]"));
         verify(orderRepository).saveAndFlush(order);
     }
 
