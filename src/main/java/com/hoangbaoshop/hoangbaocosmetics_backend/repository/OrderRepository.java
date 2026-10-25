@@ -55,12 +55,19 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
             Pageable pageable
     );
 
-    // tính tổng doanh thu toàn thời gian (trừ đơn hủy)
-    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED")
+    // tính tổng doanh thu toàn thời gian (chỉ tính đơn hợp lệ: PROCESSING, SHIPPING, DELIVERED; loại trừ PENDING và CANCELLED)
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status IN (" +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.PROCESSING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.SHIPPING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.DELIVERED)")
     BigDecimal sumTotalRevenue();
 
-    // tính tổng doanh thu trong khoảng thời gian (trừ đơn hủy)
-    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED AND o.createdAt >= :startDate AND o.createdAt <= :endDate")
+    // tính tổng doanh thu trong khoảng thời gian (chỉ tính PROCESSING, SHIPPING, DELIVERED)
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status IN (" +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.PROCESSING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.SHIPPING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.DELIVERED) " +
+           "AND o.createdAt >= :startDate AND o.createdAt <= :endDate")
     BigDecimal sumRevenueBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     // đếm số lượng đơn hàng theo trạng thái cụ thể
@@ -70,23 +77,32 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     @Query("SELECT o.status, COUNT(o) FROM Order o GROUP BY o.status")
     java.util.List<Object[]> countOrdersByStatusGrouped();
 
-    // thống kê doanh thu theo ngày trong khoảng thời gian
+    // thống kê doanh thu theo ngày trong khoảng thời gian (chỉ tính PROCESSING, SHIPPING, DELIVERED)
     @Query("SELECT FUNCTION('DATE', o.createdAt), COALESCE(SUM(o.totalAmount), 0.0), COUNT(o) " +
-           "FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED " +
+           "FROM Order o WHERE o.status IN (" +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.PROCESSING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.SHIPPING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.DELIVERED) " +
            "AND o.createdAt >= :startDate AND o.createdAt <= :endDate " +
            "GROUP BY FUNCTION('DATE', o.createdAt) ORDER BY FUNCTION('DATE', o.createdAt) ASC")
     java.util.List<Object[]> getDailyRevenue(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // thống kê doanh thu theo tháng trong khoảng thời gian
+    // thống kê doanh thu theo tháng trong khoảng thời gian (chỉ tính PROCESSING, SHIPPING, DELIVERED)
     @Query("SELECT FUNCTION('MONTH', o.createdAt), COALESCE(SUM(o.totalAmount), 0.0), COUNT(o) " +
-           "FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED " +
+           "FROM Order o WHERE o.status IN (" +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.PROCESSING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.SHIPPING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.DELIVERED) " +
            "AND o.createdAt >= :startDate AND o.createdAt < :endDate " +
            "GROUP BY FUNCTION('MONTH', o.createdAt) ORDER BY FUNCTION('MONTH', o.createdAt) ASC")
     java.util.List<Object[]> getMonthlyRevenueBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // thống kê doanh thu 12 tháng của năm
+    // thống kê doanh thu 12 tháng của năm (chỉ tính PROCESSING, SHIPPING, DELIVERED)
     @Query("SELECT FUNCTION('MONTH', o.createdAt), COALESCE(SUM(o.totalAmount), 0.0), COUNT(o) " +
-           "FROM Order o WHERE o.status != com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.CANCELLED " +
+           "FROM Order o WHERE o.status IN (" +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.PROCESSING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.SHIPPING, " +
+           "com.hoangbaoshop.hoangbaocosmetics_backend.enums.OrderStatus.DELIVERED) " +
            "AND FUNCTION('YEAR', o.createdAt) = :year " +
            "GROUP BY FUNCTION('MONTH', o.createdAt) ORDER BY FUNCTION('MONTH', o.createdAt) ASC")
     java.util.List<Object[]> getMonthlyRevenue(@Param("year") int year);
