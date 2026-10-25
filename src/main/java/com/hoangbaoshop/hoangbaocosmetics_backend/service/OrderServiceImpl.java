@@ -20,6 +20,7 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.repository.ProductVariantRepos
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.email.OrderEmailDto;
 import com.hoangbaoshop.hoangbaocosmetics_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -210,7 +212,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse updateOrderStatus(Integer orderId, UpdateOrderStatusRequest request, String staffUsername) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         OrderStatus currentStatus = order.getStatus();
@@ -254,7 +256,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse cancelOrderAdmin(Integer orderId, CancelOrderRequest request, String staffUsername) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         if (order.getStatus() == OrderStatus.DELIVERED) {
@@ -336,18 +338,27 @@ public class OrderServiceImpl implements OrderService {
         List<Order> expiredOrders = orderRepository.findByStatusAndPaymentMethodInAndCreatedAtBefore(
                 OrderStatus.PENDING, transferMethods, thirtyMinutesAgo);
 
+        int cancelledCount = 0;
         for (Order order : expiredOrders) {
-            rollbackStockForOrder(order, null, "Tự hủy: quá 30 phút chưa thanh toán");
-            order.setStatus(OrderStatus.CANCELLED);
             String cancelNote = "[HỆ THỐNG]: Tự động hủy do quá 30 phút chưa thanh toán";
             String currentNote = order.getNote() != null ? order.getNote() + " | " : "";
-            order.setNote(currentNote + cancelNote);
+            String fullNote = currentNote + cancelNote;
+            LocalDateTime now = LocalDateTime.now();
+
+            // Cập nhật trạng thái nguyên tử: Chỉ thành công nếu đơn THỰC SỰ vẫn là PENDING tại mili-giây này
+            int rowsUpdated = orderRepository.updateStatusIfMatches(
+                    order.getIdOrder(), OrderStatus.PENDING, OrderStatus.CANCELLED, fullNote, now);
+
+            if (rowsUpdated == 1) {
+                // Đổi trạng thái thành công -> Webhook chưa nhận tiền -> Hoàn kho an toàn
+                rollbackStockForOrder(order, null, "Tự hủy: quá 30 phút chưa thanh toán");
+                cancelledCount++;
+            } else {
+                log.info("Scheduler bỏ qua đơn {}: Trạng thái đã thay đổi trước đó (có thể đã được thanh toán)", order.getOrderCode());
+            }
         }
 
-        if (!expiredOrders.isEmpty()) {
-            orderRepository.saveAll(expiredOrders);
-        }
-        return expiredOrders.size();
+        return cancelledCount;
     }
 
     // ==================== HELPER METHODS ====================
