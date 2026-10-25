@@ -18,7 +18,7 @@ public class PaymentProperties {
     @Setter
     public static class VietQr {
         private String bankId = "MBBank";
-        private String accountNumber = "0359888999";
+        private String accountNumber = "14580886868";
         private String accountName = "NGUYEN HOANG BAO";
         private String template = "compact2";
     }
