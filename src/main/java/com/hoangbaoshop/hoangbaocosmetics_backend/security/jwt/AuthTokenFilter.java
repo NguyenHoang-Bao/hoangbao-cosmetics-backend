@@ -51,6 +51,17 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                // Kiểm tra trạng thái tài khoản (chặn token cũ khi tài khoản đã bị khóa)
+                if (!userDetails.isEnabled()) {
+                    log.warn("Truy cập bị từ chối: Tài khoản '{}' đã bị vô hiệu hóa hoặc khóa", username);
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("{\"success\":false,\"message\":\"Tài khoản đã bị khóa hoặc ngừng hoạt động! Vui lòng liên hệ quản trị viên.\"}");
+                    return;
+                }
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
