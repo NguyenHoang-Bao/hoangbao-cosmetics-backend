@@ -38,8 +38,17 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
 
-                // Kiểm tra token có nằm trong Redis Blacklist không
-                if (redisTemplate != null && Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:jwt:" + jwt))) {
+                // Kiểm tra token có nằm trong Redis Blacklist không (Fail-safe: Redis lỗi không làm rớt đăng nhập người dùng)
+                boolean isBlacklisted = false;
+                if (redisTemplate != null) {
+                    try {
+                        isBlacklisted = Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:jwt:" + jwt));
+                    } catch (Exception redisEx) {
+                        log.warn("Redis blacklist check tạm thời không khả dụng ({}), tiếp tục xác thực JWT cục bộ (fail-open)", redisEx.getMessage());
+                    }
+                }
+
+                if (isBlacklisted) {
                     log.warn("Truy cập bị chặn: JWT Token nằm trong danh sách đen (Đã đăng xuất)");
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
