@@ -51,6 +51,13 @@ public class GoogleClient {
             GoogleIdToken googleIdToken = verifier.verify(token);
             if (googleIdToken != null) {
                 GoogleIdToken.Payload payload = googleIdToken.getPayload();
+
+                // Kiểm tra email_verified chống chiếm đoạt tài khoản khi email chưa được xác minh
+                if (!Boolean.TRUE.equals(payload.getEmailVerified())) {
+                    log.warn("Google ID Token bị từ chối: Email '{}' chưa được xác thực (email_verified != true)", payload.getEmail());
+                    throw new BadRequestException("Tài khoản Google chưa được xác thực email! Vui lòng xác thực email trên Google trước khi đăng nhập.");
+                }
+
                 return OAuthProfile.builder()
                         .providerId(payload.getSubject())
                         .email(payload.getEmail().trim().toLowerCase())
@@ -59,6 +66,8 @@ public class GoogleClient {
                         .provider("GOOGLE")
                         .build();
             }
+        } catch (BadRequestException bre) {
+            throw bre;
         } catch (Exception ignored) {
             // Không phải ID Token, chuyển sang fallback Access Token
         }
@@ -83,11 +92,28 @@ public class GoogleClient {
                     throw new BadRequestException("Google Token không thuộc về ứng dụng này!");
                 }
 
+                Object emailVerifiedObj = tokenInfo.get("email_verified");
+                if (emailVerifiedObj != null) {
+                    boolean emailVerified = Boolean.TRUE.equals(emailVerifiedObj) || "true".equalsIgnoreCase(String.valueOf(emailVerifiedObj));
+                    if (!emailVerified) {
+                        log.warn("Google Access Token bị từ chối: email_verified = false");
+                        throw new BadRequestException("Tài khoản Google chưa được xác thực email!");
+                    }
+                }
+
                 String googleUserInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + token;
                 @SuppressWarnings("unchecked")
                 Map<String, Object> googleResponse = restTemplate.getForObject(googleUserInfoUrl, Map.class);
 
                 if (googleResponse != null && googleResponse.get("sub") != null) {
+                    Object resEmailVerified = googleResponse.get("email_verified");
+                    if (resEmailVerified != null) {
+                        boolean isVerified = Boolean.TRUE.equals(resEmailVerified) || "true".equalsIgnoreCase(String.valueOf(resEmailVerified));
+                        if (!isVerified) {
+                            throw new BadRequestException("Tài khoản Google chưa được xác thực email!");
+                        }
+                    }
+
                     return OAuthProfile.builder()
                             .providerId((String) googleResponse.get("sub"))
                             .email(((String) googleResponse.get("email")).trim().toLowerCase())
