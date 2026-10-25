@@ -93,6 +93,16 @@
             <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- Jackson Core & JSR310 Datatype (Khai báo tường minh chống phụ thuộc bắc cầu) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
         <!-- Google API Client để Verify Google ID Token an toàn chuẩn doanh nghiệp -->
         <dependency>
             <groupId>com.google.api-client</groupId>
