@@ -163,4 +163,33 @@ class AuthServiceImplTest {
         assertTrue(user.getEmailVerified());
         verify(userRepository, times(1)).save(user);
     }
+
+    @Test
+    void testSendForgotPasswordOtp_WhenEmailDoesNotExist_ReturnsSilentlyWithoutThrowing() {
+        // Given
+        com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.SendOtpRequest request =
+                new com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.SendOtpRequest();
+        request.setEmail("unknown_user@example.com");
+
+        when(userRepository.findByEmail("unknown_user@example.com")).thenReturn(Optional.empty());
+
+        // When & Then: Phải trả về êm xuôi (không ném ResourceNotFoundException) để chống User Enumeration
+        assertDoesNotThrow(() -> authService.sendForgotPasswordOtp(request));
+        verify(otpService, never()).generateAndSendOtp(anyString(), any());
+    }
+
+    @Test
+    void testSendForgotPasswordOtp_WhenEmailExists_SendsOtp() {
+        // Given
+        com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.SendOtpRequest request =
+                new com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.SendOtpRequest();
+        request.setEmail("valid_user@example.com");
+
+        User user = User.builder().email("valid_user@example.com").enabled(true).build();
+        when(userRepository.findByEmail("valid_user@example.com")).thenReturn(Optional.of(user));
+
+        // When & Then
+        assertDoesNotThrow(() -> authService.sendForgotPasswordOtp(request));
+        verify(otpService, times(1)).generateAndSendOtp(eq("valid_user@example.com"), eq(com.hoangbaoshop.hoangbaocosmetics_backend.enums.OtpTokenType.FORGOT_PASSWORD));
+    }
 }

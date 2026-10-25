@@ -3,6 +3,7 @@ package com.hoangbaoshop.hoangbaocosmetics_backend.service;
 // 7. Java Standard Libraries
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -274,29 +275,34 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    // gửi mã OTP đặt lại mật khẩu qua email
+    // gửi mã OTP đặt lại mật khẩu qua email (chống User Enumeration: không tiết lộ sự tồn tại của email)
     @Override
     @Transactional
     public void sendForgotPasswordOtp(SendOtpRequest request) {
         String cleanEmail = request.getEmail().trim().toLowerCase();
-        User user = userRepository.findByEmail(cleanEmail)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy tài khoản với email: " + request.getEmail()));
+        Optional<User> userOpt = userRepository.findByEmail(cleanEmail);
 
+        if (userOpt.isEmpty()) {
+            log.info("Quên mật khẩu: Email '{}' không tồn tại trong hệ thống (chống User Enumeration)", cleanEmail);
+            return;
+        }
+
+        User user = userOpt.get();
         if (Boolean.FALSE.equals(user.getEnabled())) {
-            throw new BadRequestException("Tài khoản này đã bị khóa. Vui lòng liên hệ ban quản trị!");
+            log.warn("Quên mật khẩu: Tài khoản '{}' đã bị khóa", cleanEmail);
+            return;
         }
 
         otpService.generateAndSendOtp(cleanEmail, OtpTokenType.FORGOT_PASSWORD);
     }
 
-    // xác thực mã OTP đặt lại mật khẩu
+    // xác thực mã OTP đặt lại mật khẩu (chống User Enumeration: thông báo chung)
     @Override
     @Transactional
     public void verifyForgotPasswordOtp(VerifyOtpRequest request) {
         String cleanEmail = request.getEmail().trim().toLowerCase();
         if (!userRepository.existsByEmail(cleanEmail)) {
-            throw new ResourceNotFoundException("Không tìm thấy tài khoản với email: " + request.getEmail());
+            throw new BadRequestException("Thông tin xác thực không hợp lệ hoặc mã OTP không chính xác!");
         }
 
         otpService.verifyOtp(cleanEmail, request.getOtpCode(), OtpTokenType.FORGOT_PASSWORD);

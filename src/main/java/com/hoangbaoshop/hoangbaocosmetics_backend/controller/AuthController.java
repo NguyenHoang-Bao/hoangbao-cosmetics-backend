@@ -60,7 +60,7 @@ public class AuthController {
     @PostMapping("/forgot-password/send-otp")
     public ResponseEntity<ApiResponse<String>> sendForgotPasswordOtp(@Valid @RequestBody SendOtpRequest request) {
         authService.sendForgotPasswordOtp(request);
-        return ResponseEntity.ok(ApiResponse.success(null, "Mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra hộp thư!"));
+        return ResponseEntity.ok(ApiResponse.success(null, "Nếu email tồn tại trên hệ thống, mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra hộp thư!"));
     }
 
     // [POST] xác thực mã OTP đặt lại mật khẩu
