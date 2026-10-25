@@ -21,15 +21,21 @@ public class PaymentController {
 
     // [GET] sinh mã VietQR cho đơn hàng (chuyển khoản ngân hàng)
     @GetMapping("/vietqr/{orderCode}")
-    public ResponseEntity<ApiResponse<PaymentQrResponse>> getVietQr(@PathVariable String orderCode) {
-        PaymentQrResponse response = paymentService.generateVietQr(orderCode);
+    public ResponseEntity<ApiResponse<PaymentQrResponse>> getVietQr(
+            @PathVariable String orderCode,
+            @RequestParam(value = "phone", required = false) String phone
+    ) {
+        PaymentQrResponse response = paymentService.generateVietQr(orderCode, phone);
         return ResponseEntity.ok(ApiResponse.success(response, "Lấy thông tin mã VietQR thành công!"));
     }
 
     // [GET] kiểm tra trạng thái thanh toán (polling)
     @GetMapping("/check-status/{orderCode}")
-    public ResponseEntity<ApiResponse<PaymentStatusResponse>> checkStatus(@PathVariable String orderCode) {
-        PaymentStatusResponse response = paymentService.checkPaymentStatus(orderCode);
+    public ResponseEntity<ApiResponse<PaymentStatusResponse>> checkStatus(
+            @PathVariable String orderCode,
+            @RequestParam(value = "phone", required = false) String phone
+    ) {
+        PaymentStatusResponse response = paymentService.checkPaymentStatus(orderCode, phone);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

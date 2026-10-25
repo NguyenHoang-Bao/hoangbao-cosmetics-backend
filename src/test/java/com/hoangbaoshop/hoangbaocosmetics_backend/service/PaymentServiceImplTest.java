@@ -279,4 +279,41 @@ class PaymentServiceImplTest {
         // Then: Catches constraint violation and returns true cleanly
         assertTrue(result);
     }
+
+    @Test
+    void checkPaymentStatus_WhenPhoneMatchesLast4Digits_ReturnsStatus() {
+        Order order = Order.builder()
+                .idOrder(1)
+                .orderCode("HB20261013A1B2C3")
+                .phoneNumber("0987654321")
+                .totalAmount(BigDecimal.valueOf(250000))
+                .status(OrderStatus.PROCESSING)
+                .paymentMethod(PaymentMethod.BANK_TRANSFER)
+                .build();
+
+        when(orderRepository.findByOrderCode("HB20261013A1B2C3")).thenReturn(Optional.of(order));
+
+        var response = paymentService.checkPaymentStatus("HB20261013A1B2C3", "4321");
+
+        assertNotNull(response);
+        assertTrue(response.isPaid());
+        assertEquals("HB20261013A1B2C3", response.getOrderCode());
+    }
+
+    @Test
+    void checkPaymentStatus_WhenPhoneDoesNotMatch_ThrowsBadRequestException() {
+        Order order = Order.builder()
+                .idOrder(1)
+                .orderCode("HB20261013A1B2C3")
+                .phoneNumber("0987654321")
+                .totalAmount(BigDecimal.valueOf(250000))
+                .status(OrderStatus.PROCESSING)
+                .build();
+
+        when(orderRepository.findByOrderCode("HB20261013A1B2C3")).thenReturn(Optional.of(order));
+
+        assertThrows(com.hoangbaoshop.hoangbaocosmetics_backend.exception.BadRequestException.class, () ->
+                paymentService.checkPaymentStatus("HB20261013A1B2C3", "9999")
+        );
+    }
 }

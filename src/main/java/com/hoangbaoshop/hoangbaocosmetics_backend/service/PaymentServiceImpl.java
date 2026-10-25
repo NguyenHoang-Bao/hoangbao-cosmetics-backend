@@ -44,8 +44,16 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public PaymentQrResponse generateVietQr(String orderCode) {
+        return generateVietQr(orderCode, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentQrResponse generateVietQr(String orderCode, String phone) {
         Order order = orderRepository.findByOrderCode(orderCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã: " + orderCode));
+
+        validateOrderPhoneAccess(order, phone);
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new BadRequestException("Đơn hàng đã bị hủy, không thể tiến hành thanh toán!");
@@ -83,8 +91,16 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public PaymentStatusResponse checkPaymentStatus(String orderCode) {
+        return checkPaymentStatus(orderCode, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentStatusResponse checkPaymentStatus(String orderCode, String phone) {
         Order order = orderRepository.findByOrderCode(orderCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã: " + orderCode));
+
+        validateOrderPhoneAccess(order, phone);
 
         boolean isPaid = (order.getStatus() == OrderStatus.PROCESSING ||
                 order.getStatus() == OrderStatus.SHIPPING ||
@@ -98,6 +114,19 @@ public class PaymentServiceImpl implements PaymentService {
                 .transactionId(order.getTransactionId())
                 .paymentMethod(order.getPaymentMethod())
                 .build();
+    }
+
+    private void validateOrderPhoneAccess(Order order, String phone) {
+        if (phone != null && !phone.isBlank()) {
+            String cleanInput = phone.trim();
+            String orderPhone = order.getPhoneNumber() != null ? order.getPhoneNumber().trim() : "";
+            boolean matches = orderPhone.equals(cleanInput) ||
+                    (cleanInput.length() >= 4 && orderPhone.endsWith(cleanInput));
+            if (!matches) {
+                log.warn("Truy cập thông tin thanh toán bị từ chối: Số điện thoại không khớp với đơn hàng {}", order.getOrderCode());
+                throw new BadRequestException("Số điện thoại không khớp với thông tin đơn hàng!");
+            }
+        }
     }
 
     // xử lý webhook sepay tự động xác nhận chuyển khoản ngân hàng

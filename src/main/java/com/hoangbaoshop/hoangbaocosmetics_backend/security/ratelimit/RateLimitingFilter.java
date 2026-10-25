@@ -47,6 +47,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private final Map<String, RequestCounter> authRateLimitMap = new ConcurrentHashMap<>();
     private final Map<String, RequestCounter> orderLookupRateLimitMap = new ConcurrentHashMap<>();
     private final Map<String, RequestCounter> orderCreateRateLimitMap = new ConcurrentHashMap<>();
+    private final Map<String, RequestCounter> paymentRateLimitMap = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
 
     public RateLimitingFilter() {
@@ -95,6 +96,15 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             if (!isAllowed("order-create", clientIp, 5, orderCreateRateLimitMap)) {
                 log.warn("Rate limit vượt ngưỡng cho tạo đơn hàng từ IP: {} (Path: {})", clientIp, path);
                 sendTooManyRequestsResponse(response, "Bạn đặt hàng quá nhanh, thử lại sau 1 phút!");
+                return;
+            }
+        }
+
+        // 4. Giới hạn tần suất cho API payment /api/payment/** (tối đa 10 req/phút, loại trừ webhook)
+        if (path.startsWith("/api/payment") && !path.equals("/api/payment/sepay-webhook")) {
+            if (!isAllowed("payment", clientIp, 10, paymentRateLimitMap)) {
+                log.warn("Rate limit vượt ngưỡng cho API Payment từ IP: {} (Path: {})", clientIp, path);
+                sendTooManyRequestsResponse(response, "Bạn đã gửi quá nhiều yêu cầu thanh toán. Vui lòng thử lại sau 1 phút!");
                 return;
             }
         }
