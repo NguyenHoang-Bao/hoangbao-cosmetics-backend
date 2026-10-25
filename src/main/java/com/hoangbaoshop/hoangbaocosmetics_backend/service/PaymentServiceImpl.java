@@ -150,6 +150,7 @@ public class PaymentServiceImpl implements PaymentService {
         // Chặn trùng lặp webhook SePay ngay tại tầng Redis trước khi chạm vào Database.
         // TTL 30 giây để bao phủ toàn bộ vòng đời xử lý và ngăn chặn spike từ retry của SePay.
         String lockKey = "lock:sepay:" + txId;
+        boolean lockAcquired = false;
         if (redisTemplate != null) {
             try {
                 Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.ofSeconds(30));
@@ -157,11 +158,13 @@ public class PaymentServiceImpl implements PaymentService {
                     log.warn("SePay Webhook (Redis Lock): Giao dịch '{}' đang được xử lý hoặc đã được xử lý trước đó. Bỏ qua để tránh duplicate processing.", txId);
                     return true;
                 }
+                lockAcquired = Boolean.TRUE.equals(acquired);
             } catch (Exception e) {
                 log.warn("Redis lock error for SePay webhook (fallback to DB lock): {}", e.getMessage());
             }
         }
 
+        try {
         // 5. Kiểm tra Idempotency: Nếu mã giao dịch (txId) này đã được xử lý trước đó -> Bỏ qua ngay
         if (orderRepository.existsByTransactionId(txId)) {
             log.info("SePay Webhook (Idempotent): Giao dịch '{}' đã được xử lý trước đó. Xác nhận thành công để tránh SePay retry.", txId);
@@ -247,5 +250,17 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("SePay Webhook: Xác nhận thanh toán thành công cho đơn hàng {} với số tiền {} VNĐ (Mã GD: {})!",
                 orderCode, String.format("%,.0f", transferAmount), txId);
         return true;
+        } catch (Exception ex) {
+            // Khi xảy ra ngoại lệ không mong muốn, giải phóng Redis lock ngay lập tức để SePay có thể retry lại
+            if (lockAcquired && redisTemplate != null) {
+                try {
+                    redisTemplate.delete(lockKey);
+                    log.warn("Đã giải phóng Redis lock '{}' do ngoại lệ trong xử lý webhook: {}", lockKey, ex.getMessage());
+                } catch (Exception rex) {
+                    log.warn("Lỗi khi xóa Redis lock: {}", rex.getMessage());
+                }
+            }
+            throw ex;
+        }
     }
 }

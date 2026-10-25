@@ -279,4 +279,35 @@ class PaymentServiceImplTest {
         // Then: Catches constraint violation and returns true cleanly
         assertTrue(result);
     }
+
+    @Test
+    void processSepayWebhook_WhenUnexpectedExceptionOccurs_ReleasesRedisLockAndRethrows() {
+        // Given
+        org.springframework.data.redis.core.StringRedisTemplate mockRedis = mock(org.springframework.data.redis.core.StringRedisTemplate.class);
+        @SuppressWarnings("unchecked")
+        org.springframework.data.redis.core.ValueOperations<String, String> mockOps = mock(org.springframework.data.redis.core.ValueOperations.class);
+        when(mockRedis.opsForValue()).thenReturn(mockOps);
+        when(mockOps.setIfAbsent(eq("lock:sepay:TX-ERR-1"), eq("LOCKED"), any(java.time.Duration.class))).thenReturn(true);
+
+        org.springframework.test.util.ReflectionTestUtils.setField(paymentService, "redisTemplate", mockRedis);
+
+        sepayConfig.setApiKey("secure_secret_123");
+        SepayWebhookRequest request = SepayWebhookRequest.builder()
+                .transferType("in")
+                .content("Thanh toan HB20261013A1B2C3")
+                .referenceCode("TX-ERR-1")
+                .transferAmount(BigDecimal.valueOf(250000))
+                .build();
+
+        when(orderRepository.existsByTransactionId("TX-ERR-1"))
+                .thenThrow(new RuntimeException("Database connection blip"));
+
+        // When & Then
+        assertThrows(RuntimeException.class, () ->
+                paymentService.processSepayWebhook(request, "Apikey secure_secret_123")
+        );
+
+        // Verify Redis lock was released in catch block
+        verify(mockRedis, times(1)).delete("lock:sepay:TX-ERR-1");
+    }
 }
