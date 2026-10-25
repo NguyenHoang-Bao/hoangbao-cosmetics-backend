@@ -24,6 +24,7 @@ public class OtpServiceImpl implements OtpService {
 
     private final OtpTokenRepository otpTokenRepository;
     private final EmailService emailService;
+    private final OtpAttemptHelper otpAttemptHelper;
 
     @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
@@ -71,10 +72,12 @@ public class OtpServiceImpl implements OtpService {
                 String redisKey = "otp:" + tokenType + ":" + cleanEmail;
                 String cooldownKey = "otp:cooldown:" + tokenType + ":" + cleanEmail;
                 String attemptsKey = "otp:attempts:" + tokenType + ":" + cleanEmail;
+                String lockedKey = "otp:locked:" + tokenType + ":" + cleanEmail;
 
                 redisTemplate.opsForValue().set(redisKey, otpCode, Duration.ofMinutes(OTP_EXPIRY_MINUTES));
                 redisTemplate.opsForValue().set(cooldownKey, "1", Duration.ofSeconds(RESEND_COOLDOWN_SECONDS));
                 redisTemplate.delete(attemptsKey);
+                redisTemplate.delete(lockedKey);
                 log.info("Đã lưu OTP vào Redis với TTL {} phút cho email: {}", OTP_EXPIRY_MINUTES, cleanEmail);
             } catch (Exception e) {
                 log.warn("Lỗi khi ghi OTP vào Redis, tiếp tục lưu MySQL fallback: {}", e.getMessage());
@@ -118,6 +121,7 @@ public class OtpServiceImpl implements OtpService {
                 String cleanEmail = email.trim().toLowerCase();
                 redisTemplate.delete("otp:" + tokenType + ":" + cleanEmail);
                 redisTemplate.delete("otp:attempts:" + tokenType + ":" + cleanEmail);
+                redisTemplate.delete("otp:locked:" + tokenType + ":" + cleanEmail);
             } catch (Exception e) {
                 log.warn("Lỗi khi xóa OTP khỏi Redis: {}", e.getMessage());
             }
@@ -131,6 +135,11 @@ public class OtpServiceImpl implements OtpService {
         // 1. Xác thực bằng Redis nếu có
         if (redisTemplate != null) {
             try {
+                String lockedKey = "otp:locked:" + tokenType + ":" + cleanEmail;
+                if (Boolean.TRUE.equals(redisTemplate.hasKey(lockedKey))) {
+                    throw new BadRequestException("Bạn đã nhập sai mã quá số lần cho phép. Vui lòng yêu cầu mã OTP mới!");
+                }
+
                 String redisKey = "otp:" + tokenType + ":" + cleanEmail;
                 String attemptsKey = "otp:attempts:" + tokenType + ":" + cleanEmail;
                 String storedOtp = redisTemplate.opsForValue().get(redisKey);
@@ -141,8 +150,11 @@ public class OtpServiceImpl implements OtpService {
                         redisTemplate.expire(attemptsKey, Duration.ofMinutes(OTP_EXPIRY_MINUTES));
                     }
 
-                    if (attempts != null && attempts > MAX_ATTEMPT_COUNT) {
+                    if (attempts != null && attempts >= MAX_ATTEMPT_COUNT && !storedOtp.equals(otpCode.trim())) {
+                        redisTemplate.opsForValue().set(lockedKey, "1", Duration.ofMinutes(OTP_EXPIRY_MINUTES));
                         redisTemplate.delete(redisKey);
+                        otpTokenRepository.findTopByEmailAndTokenTypeAndIsUsedFalseOrderByCreatedAtDesc(cleanEmail, tokenType)
+                                .ifPresent(t -> otpAttemptHelper.markTokenAsUsed(t.getIdOtp()));
                         throw new BadRequestException("Bạn đã nhập sai mã quá số lần cho phép. Vui lòng yêu cầu mã OTP mới!");
                     }
 
@@ -174,21 +186,23 @@ public class OtpServiceImpl implements OtpService {
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy mã OTP hợp lệ hoặc mã đã được sử dụng!"));
 
         if (token.getAttemptCount() >= MAX_ATTEMPT_COUNT) {
-            token.setIsUsed(true);
-            otpTokenRepository.save(token);
+            otpAttemptHelper.markTokenAsUsed(token.getIdOtp());
             throw new BadRequestException("Bạn đã nhập sai mã quá số lần cho phép. Vui lòng yêu cầu mã OTP mới!");
         }
 
         if (token.getExpiryTime().isBefore(LocalDateTime.now())) {
-            token.setIsUsed(true);
-            otpTokenRepository.save(token);
+            otpAttemptHelper.markTokenAsUsed(token.getIdOtp());
             throw new BadRequestException("Mã OTP đã hết hạn! Vui lòng yêu cầu mã OTP mới.");
         }
 
         if (!token.getOtpCode().equals(otpCode.trim())) {
-            token.setAttemptCount(token.getAttemptCount() + 1);
-            otpTokenRepository.save(token);
-            int remainingAttempts = MAX_ATTEMPT_COUNT - token.getAttemptCount();
+            int newAttemptCount = otpAttemptHelper.recordFailedAttempt(token.getIdOtp(), MAX_ATTEMPT_COUNT);
+            token.setAttemptCount(newAttemptCount);
+            if (newAttemptCount >= MAX_ATTEMPT_COUNT) {
+                token.setIsUsed(true);
+                throw new BadRequestException("Bạn đã nhập sai mã quá số lần cho phép. Vui lòng yêu cầu mã OTP mới!");
+            }
+            int remainingAttempts = MAX_ATTEMPT_COUNT - newAttemptCount;
             throw new BadRequestException("Mã OTP không chính xác! Bạn còn " + remainingAttempts + " lần thử.");
         }
 

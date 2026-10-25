@@ -27,6 +27,9 @@ class OtpServiceImplTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private OtpAttemptHelper otpAttemptHelper;
+
     @InjectMocks
     private OtpServiceImpl otpService;
 
@@ -68,6 +71,7 @@ class OtpServiceImplTest {
         String email = "customer@gmail.com";
         String otp = "123456";
         OtpToken token = OtpToken.builder()
+                .idOtp(1L)
                 .email(email)
                 .otpCode(otp)
                 .tokenType(OtpTokenType.FORGOT_PASSWORD)
@@ -83,9 +87,10 @@ class OtpServiceImplTest {
     }
 
     @Test
-    void testVerifyOtp_WrongCode_IncrementsAttempts() {
+    void testVerifyOtp_WrongCode_IncrementsAttemptsViaHelper() {
         String email = "customer@gmail.com";
         OtpToken token = OtpToken.builder()
+                .idOtp(1L)
                 .email(email)
                 .otpCode("123456")
                 .tokenType(OtpTokenType.FORGOT_PASSWORD)
@@ -96,6 +101,7 @@ class OtpServiceImplTest {
 
         when(otpTokenRepository.findTopByEmailAndTokenTypeAndIsUsedFalseOrderByCreatedAtDesc(email, OtpTokenType.FORGOT_PASSWORD))
                 .thenReturn(Optional.of(token));
+        when(otpAttemptHelper.recordFailedAttempt(eq(1L), anyInt())).thenReturn(1);
 
         BadRequestException ex = assertThrows(BadRequestException.class, () ->
                 otpService.verifyOtp(email, "999999", OtpTokenType.FORGOT_PASSWORD)
@@ -103,13 +109,40 @@ class OtpServiceImplTest {
 
         assertTrue(ex.getMessage().contains("Mã OTP không chính xác"));
         assertEquals(1, token.getAttemptCount());
-        verify(otpTokenRepository).save(token);
+        verify(otpAttemptHelper, times(1)).recordFailedAttempt(eq(1L), eq(5));
     }
 
     @Test
-    void testVerifyOtp_Expired_ThrowsException() {
+    void testVerifyOtp_ExceedsMaxAttempts_ThrowsLockoutException() {
         String email = "customer@gmail.com";
         OtpToken token = OtpToken.builder()
+                .idOtp(1L)
+                .email(email)
+                .otpCode("123456")
+                .tokenType(OtpTokenType.FORGOT_PASSWORD)
+                .expiryTime(LocalDateTime.now().plusMinutes(5))
+                .attemptCount(4)
+                .isUsed(false)
+                .build();
+
+        when(otpTokenRepository.findTopByEmailAndTokenTypeAndIsUsedFalseOrderByCreatedAtDesc(email, OtpTokenType.FORGOT_PASSWORD))
+                .thenReturn(Optional.of(token));
+        when(otpAttemptHelper.recordFailedAttempt(eq(1L), anyInt())).thenReturn(5);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                otpService.verifyOtp(email, "999999", OtpTokenType.FORGOT_PASSWORD)
+        );
+
+        assertTrue(ex.getMessage().contains("Bạn đã nhập sai mã quá số lần cho phép"));
+        assertTrue(token.getIsUsed());
+        verify(otpAttemptHelper, times(1)).recordFailedAttempt(eq(1L), eq(5));
+    }
+
+    @Test
+    void testVerifyOtp_Expired_MarksAsUsedViaHelper() {
+        String email = "customer@gmail.com";
+        OtpToken token = OtpToken.builder()
+                .idOtp(1L)
                 .email(email)
                 .otpCode("123456")
                 .tokenType(OtpTokenType.FORGOT_PASSWORD)
@@ -124,7 +157,6 @@ class OtpServiceImplTest {
         assertThrows(BadRequestException.class, () ->
                 otpService.verifyOtp(email, "123456", OtpTokenType.FORGOT_PASSWORD)
         );
-        assertTrue(token.getIsUsed());
-        verify(otpTokenRepository).save(token);
+        verify(otpAttemptHelper, times(1)).markTokenAsUsed(eq(1L));
     }
 }
