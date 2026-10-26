@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -26,6 +27,23 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.orderCode = :orderCode")
     Optional<Order> findByOrderCodeForUpdate(@Param("orderCode") String orderCode);
+
+    // khóa dòng đơn hàng theo ID (pessimistic write lock) khi admin thao tác hủy đơn
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.idOrder = :idOrder")
+    Optional<Order> findByIdForUpdate(@Param("idOrder") Integer idOrder);
+
+    // cập nhật trạng thái đơn hàng nguyên tử (chỉ thành công nếu trạng thái hiện tại đúng như kỳ vọng)
+    @Modifying
+    @Query("UPDATE Order o SET o.status = :newStatus, o.note = :note, o.updatedAt = :now, o.version = o.version + 1 " +
+           "WHERE o.idOrder = :idOrder AND o.status = :expectedStatus")
+    int updateStatusIfMatches(
+            @Param("idOrder") Integer idOrder,
+            @Param("expectedStatus") OrderStatus expectedStatus,
+            @Param("newStatus") OrderStatus newStatus,
+            @Param("note") String note,
+            @Param("now") LocalDateTime now
+    );
 
     // kiểm tra mã giao dịch thanh toán đã tồn tại chưa
     boolean existsByTransactionId(String transactionId);

@@ -189,4 +189,93 @@ class OrderServiceImplTest {
                 eq("buyer@gmail.com")
         );
     }
+
+    @Test
+    void testCancelExpiredBankTransferOrders_WhenStatusStillPending_CancelsAndRollsBackStock() {
+        // Given
+        ProductVariant variant = ProductVariant.builder().idVariant(10).stockQuantity(5).build();
+        com.hoangbaoshop.hoangbaocosmetics_backend.entity.OrderDetail detail = 
+                com.hoangbaoshop.hoangbaocosmetics_backend.entity.OrderDetail.builder()
+                        .variant(variant)
+                        .quantity(2)
+                        .price(BigDecimal.valueOf(100000))
+                        .build();
+
+        Order order = Order.builder()
+                .idOrder(1)
+                .orderCode("HB20261025000001")
+                .status(OrderStatus.PENDING)
+                .paymentMethod(PaymentMethod.BANK_TRANSFER)
+                .orderDetails(List.of(detail))
+                .build();
+
+        when(orderRepository.findByStatusAndPaymentMethodInAndCreatedAtBefore(eq(OrderStatus.PENDING), anyList(), any(java.time.LocalDateTime.class)))
+                .thenReturn(List.of(order));
+        when(orderRepository.updateStatusIfMatches(eq(1), eq(OrderStatus.PENDING), eq(OrderStatus.CANCELLED), anyString(), any(java.time.LocalDateTime.class)))
+                .thenReturn(1);
+
+        // When
+        int result = orderService.cancelExpiredBankTransferOrders();
+
+        // Then
+        assertEquals(1, result);
+        verify(productVariantRepository, times(1)).increaseStockQuantity(10, 2);
+    }
+
+    @Test
+    void testCancelExpiredBankTransferOrders_WhenWebhookAlreadyProcessed_SkipsRollbackStock() {
+        // Given: Webhook received payment concurrently, changing status to PROCESSING
+        ProductVariant variant = ProductVariant.builder().idVariant(10).stockQuantity(5).build();
+        com.hoangbaoshop.hoangbaocosmetics_backend.entity.OrderDetail detail = 
+                com.hoangbaoshop.hoangbaocosmetics_backend.entity.OrderDetail.builder()
+                        .variant(variant)
+                        .quantity(2)
+                        .price(BigDecimal.valueOf(100000))
+                        .build();
+
+        Order order = Order.builder()
+                .idOrder(1)
+                .orderCode("HB20261025000001")
+                .status(OrderStatus.PENDING)
+                .paymentMethod(PaymentMethod.BANK_TRANSFER)
+                .orderDetails(List.of(detail))
+                .build();
+
+        when(orderRepository.findByStatusAndPaymentMethodInAndCreatedAtBefore(eq(OrderStatus.PENDING), anyList(), any(java.time.LocalDateTime.class)))
+                .thenReturn(List.of(order));
+        // Atomic update returns 0 because status is no longer PENDING (Webhook changed it)
+        when(orderRepository.updateStatusIfMatches(eq(1), eq(OrderStatus.PENDING), eq(OrderStatus.CANCELLED), anyString(), any(java.time.LocalDateTime.class)))
+                .thenReturn(0);
+
+        // When
+        int result = orderService.cancelExpiredBankTransferOrders();
+
+        // Then: 0 orders cancelled by scheduler, and stock is NEVER rolled back!
+        assertEquals(0, result);
+        verify(productVariantRepository, never()).increaseStockQuantity(anyInt(), anyInt());
+    }
+
+    @Test
+    void testCancelOrderAdmin_WhenAlreadyCancelled_ThrowsExceptionAndNeverRollsBackStock() {
+        // Given
+        Order cancelledOrder = Order.builder()
+                .idOrder(1)
+                .orderCode("HB20261025000001")
+                .status(OrderStatus.CANCELLED)
+                .build();
+
+        when(orderRepository.findByIdForUpdate(1)).thenReturn(Optional.of(cancelledOrder));
+
+        com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.order.CancelOrderRequest request = 
+                new com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.order.CancelOrderRequest();
+        request.setReason("Khách muốn đổi");
+
+        // When & Then
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.hoangbaoshop.hoangbaocosmetics_backend.exception.BadRequestException.class,
+                () -> orderService.cancelOrderAdmin(1, request, "admin_user")
+        );
+
+        verify(productVariantRepository, never()).increaseStockQuantity(anyInt(), anyInt());
+    }
 }
