@@ -1,10 +1,12 @@
 name: Backend CD (Build, Push & Deploy AWS)
 
-# Kích hoạt khi code được push hoặc merge vào nhánh main
+# Kích hoạt khi quy trình Backend CI chạy thành công trên nhánh main
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Backend CI"]
+    branches: [main]
+    types:
+      - completed
 
 # Hủy lượt chạy cũ nếu có commit mới liên tục vào main
 concurrency:
@@ -12,15 +14,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Job 1: Build Docker Image và đẩy lên kho Docker Hub
+  # Job 1: Build Docker Image và đẩy lên kho Docker Hub (Chỉ chạy khi CI thành công)
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      # 1. Kéo mã nguồn về máy ảo
+      # 1. Kéo mã nguồn về máy ảo theo commit của workflow CI vừa hoàn tất
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       # 2. Cài đặt Java 17 và nạp bộ nhớ đệm Maven
       - name: Setup Java 17
@@ -58,7 +63,7 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/hoangbaocosmetics-backend:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/hoangbaocosmetics-backend:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/hoangbaocosmetics-backend:${{ github.event.workflow_run.head_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
