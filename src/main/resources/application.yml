@@ -116,3 +116,6 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+  health:
+    mail:
+      enabled: false # Vô hiệu hóa mail health check để tránh đánh dấu DOWN hệ thống khi SMTP chập chờn
