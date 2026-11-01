@@ -12,4 +12,5 @@ public class CategoryResponse {
     private Integer idCategory;
     private String name;
     private String slug;
+    private String thumbnail;
 }

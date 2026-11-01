@@ -66,6 +66,7 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = Category.builder()
                 .name(request.getName().trim())
                 .slug(slug)
+                .thumbnail(request.getThumbnail())
                 .build();
 
         Category saved = categoryRepository.save(category);
@@ -95,6 +96,10 @@ public class CategoryServiceImpl implements CategoryService {
             category.setSlug(newSlug);
         }
 
+        if (request.getThumbnail() != null) {
+            category.setThumbnail(request.getThumbnail());
+        }
+
         Category updated = categoryRepository.save(category);
         return mapToResponse(updated);
     }
@@ -120,6 +125,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .idCategory(category.getIdCategory())
                 .name(category.getName())
                 .slug(category.getSlug())
+                .thumbnail(category.getThumbnail())
                 .build();
     }
 
