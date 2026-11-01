@@ -51,9 +51,14 @@ public class GoogleClient {
             GoogleIdToken googleIdToken = verifier.verify(token);
             if (googleIdToken != null) {
                 GoogleIdToken.Payload payload = googleIdToken.getPayload();
+                String rawEmail = payload.getEmail();
+                String email = (rawEmail != null && !rawEmail.isBlank())
+                        ? rawEmail.trim().toLowerCase()
+                        : payload.getSubject() + "@google.com";
+
                 return OAuthProfile.builder()
                         .providerId(payload.getSubject())
-                        .email(payload.getEmail().trim().toLowerCase())
+                        .email(email)
                         .fullName((String) payload.get("name"))
                         .avatarUrl((String) payload.get("picture"))
                         .provider("GOOGLE")
@@ -88,9 +93,15 @@ public class GoogleClient {
                 Map<String, Object> googleResponse = restTemplate.getForObject(googleUserInfoUrl, Map.class);
 
                 if (googleResponse != null && googleResponse.get("sub") != null) {
+                    String sub = (String) googleResponse.get("sub");
+                    String rawEmail = (String) googleResponse.get("email");
+                    String email = (rawEmail != null && !rawEmail.isBlank())
+                            ? rawEmail.trim().toLowerCase()
+                            : sub + "@google.com";
+
                     return OAuthProfile.builder()
-                            .providerId((String) googleResponse.get("sub"))
-                            .email(((String) googleResponse.get("email")).trim().toLowerCase())
+                            .providerId(sub)
+                            .email(email)
                             .fullName((String) googleResponse.get("name"))
                             .avatarUrl((String) googleResponse.get("picture"))
                             .provider("GOOGLE")
