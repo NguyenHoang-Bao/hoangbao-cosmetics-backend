@@ -117,7 +117,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         // Các API công khai cho phép truy cập tự do
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/brands/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/brands/**", "/api/flash-sales/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/products/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/feedbacks", "/api/feedbacks/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
