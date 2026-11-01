@@ -14,4 +14,6 @@ public class CategoryRequest {
     private String name;
 
     private String slug;
+
+    private String thumbnail;
 }

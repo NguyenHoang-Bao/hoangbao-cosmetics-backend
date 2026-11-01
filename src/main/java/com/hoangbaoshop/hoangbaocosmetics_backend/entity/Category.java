@@ -22,4 +22,7 @@ public class Category {
 
     @Column(name = "slug", nullable = false, unique = true, length = 255)
     private String slug;
+
+    @Column(name = "thumbnail", length = 255)
+    private String thumbnail;
 }
