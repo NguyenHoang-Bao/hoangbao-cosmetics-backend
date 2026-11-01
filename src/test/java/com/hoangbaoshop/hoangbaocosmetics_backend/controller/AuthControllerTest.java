@@ -1,6 +1,8 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.FacebookLoginRequest;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.GoogleLoginRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.LoginRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.RegisterRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.auth.AuthResponse;
@@ -99,21 +101,40 @@ class AuthControllerTest {
                 .phoneNumber("0912345678")
                 .build();
 
-        doNothing().when(authService).register(any(RegisterRequest.class));
-
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Đăng ký tài khoản thành công!"));
+                .andExpect(jsonPath("$.message").value("Đăng ký tài khoản thành công!"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(authService, times(1)).register(any(RegisterRequest.class));
+    }
+
+    @Test
+    void testLoginValidationFailure_ReturnsBadRequestWithApiResponse() throws Exception {
+        LoginRequest invalidRequest = LoginRequest.builder()
+                .username("")
+                .password("")
+                .build();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.username").isNotEmpty())
+                .andExpect(jsonPath("$.data.password").isNotEmpty());
+
+        verify(authService, never()).login(any());
     }
 
     @Test
     void testLoginBadCredentials_ReturnsUnauthorizedWithApiResponse() throws Exception {
         LoginRequest request = LoginRequest.builder()
-                .username("admin")
-                .password("wrongpassword")
+                .username("wronguser")
+                .password("wrongpass")
                 .build();
 
         when(authService.login(any(LoginRequest.class)))
@@ -153,5 +174,83 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message").value("Đăng nhập thành công!"))
                 .andExpect(jsonPath("$.data.accessToken").value("mock.jwt.token"))
                 .andExpect(jsonPath("$.data.username").value("admin"));
+    }
+
+    @Test
+    void testLoginWithGoogle_Success_ReturnsOkWithApiResponse() throws Exception {
+        GoogleLoginRequest request = GoogleLoginRequest.builder().idToken("valid_google_token").build();
+
+        AuthResponse authResponse = AuthResponse.builder()
+                .accessToken("mock.google.jwt")
+                .tokenType("Bearer")
+                .idUser(10)
+                .username("google@gmail.com")
+                .fullName("Google User")
+                .roles(Set.of("ROLE_CUSTOMER"))
+                .build();
+
+        when(authService.loginWithGoogle(any(GoogleLoginRequest.class))).thenReturn(authResponse);
+
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Đăng nhập Google thành công!"))
+                .andExpect(jsonPath("$.data.accessToken").value("mock.google.jwt"))
+                .andExpect(jsonPath("$.data.username").value("google@gmail.com"));
+    }
+
+    @Test
+    void testLoginWithGoogle_BlankToken_ReturnsBadRequest() throws Exception {
+        GoogleLoginRequest request = GoogleLoginRequest.builder().idToken("").build();
+
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.idToken").isNotEmpty());
+
+        verify(authService, never()).loginWithGoogle(any());
+    }
+
+    @Test
+    void testLoginWithFacebook_Success_ReturnsOkWithApiResponse() throws Exception {
+        FacebookLoginRequest request = FacebookLoginRequest.builder().accessToken("valid_fb_token").build();
+
+        AuthResponse authResponse = AuthResponse.builder()
+                .accessToken("mock.facebook.jwt")
+                .tokenType("Bearer")
+                .idUser(11)
+                .username("fb@facebook.com")
+                .fullName("Facebook User")
+                .roles(Set.of("ROLE_CUSTOMER"))
+                .build();
+
+        when(authService.loginWithFacebook(any(FacebookLoginRequest.class))).thenReturn(authResponse);
+
+        mockMvc.perform(post("/api/auth/facebook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Đăng nhập Facebook thành công!"))
+                .andExpect(jsonPath("$.data.accessToken").value("mock.facebook.jwt"))
+                .andExpect(jsonPath("$.data.username").value("fb@facebook.com"));
+    }
+
+    @Test
+    void testLoginWithFacebook_BlankToken_ReturnsBadRequest() throws Exception {
+        FacebookLoginRequest request = FacebookLoginRequest.builder().accessToken("").build();
+
+        mockMvc.perform(post("/api/auth/facebook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
+
+        verify(authService, never()).loginWithFacebook(any());
     }
 }

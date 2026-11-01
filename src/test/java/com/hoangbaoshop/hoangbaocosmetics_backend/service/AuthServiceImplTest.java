@@ -1,5 +1,10 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.service;
 
+import com.hoangbaoshop.hoangbaocosmetics_backend.client.FacebookClient;
+import com.hoangbaoshop.hoangbaocosmetics_backend.client.GoogleClient;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.oauth.OAuthProfile;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.FacebookLoginRequest;
+import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.GoogleLoginRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.LoginRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.RegisterRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.auth.AuthResponse;
@@ -22,7 +27,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,6 +54,10 @@ class AuthServiceImplTest {
     private com.hoangbaoshop.hoangbaocosmetics_backend.repository.OtpTokenRepository otpTokenRepository;
     @Mock
     private EmailService emailService;
+    @Mock
+    private GoogleClient googleClient;
+    @Mock
+    private FacebookClient facebookClient;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -102,21 +113,25 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void testLogin_Success_ReturnsJwtAndUserDetails() {
+    void testLogin_Success_ReturnsAuthResponseWithJwt() {
         LoginRequest request = LoginRequest.builder()
                 .username("test_user")
                 .password("password123")
                 .build();
 
-        UserDetailsImpl userDetails = UserDetailsImpl.builder()
+        Role role = Role.builder().idRole(1).nameRole("ROLE_USER").build();
+        User mockUser = User.builder()
                 .idUser(10)
                 .username("test_user")
-                .email("test@gmail.com")
-                .authorities(Collections.emptyList())
+                .fullName("Test User")
+                .email("test@example.com")
+                .roles(Collections.singleton(role))
+                .enabled(true)
                 .build();
 
-        Authentication auth = mock(Authentication.class);
-        when(auth.getPrincipal()).thenReturn(userDetails);
+        UserDetailsImpl userDetails = UserDetailsImpl.build(mockUser);
+        Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(auth);
         when(jwtUtils.generateJwtToken(auth)).thenReturn("sample_jwt_token_123");
 
@@ -138,6 +153,204 @@ class AuthServiceImplTest {
                 .thenThrow(new BadCredentialsException("Sai tài khoản hoặc mật khẩu"));
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
+    }
+
+    @Test
+    void testLoginWithGoogle_NewUser_CreatesUserWithCustomerRoleAndReturnsJwt() {
+        GoogleLoginRequest request = GoogleLoginRequest.builder().idToken("valid_google_token").build();
+        OAuthProfile profile = OAuthProfile.builder()
+                .providerId("google_12345")
+                .email("newuser@gmail.com")
+                .fullName("Google User")
+                .avatarUrl("https://example.com/avatar.jpg")
+                .provider("GOOGLE")
+                .build();
+
+        when(googleClient.verifyAndGetProfile("valid_google_token")).thenReturn(profile);
+        when(userRepository.findByEmail("newuser@gmail.com")).thenReturn(Optional.empty());
+
+        Role customerRole = Role.builder().idRole(1).nameRole("CUSTOMER").build();
+        when(roleRepository.findByNameRole("CUSTOMER")).thenReturn(Optional.of(customerRole));
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed_uuid_password");
+
+        User savedUser = User.builder()
+                .idUser(101)
+                .username("newuser@gmail.com")
+                .email("newuser@gmail.com")
+                .fullName("Google User")
+                .avatar("https://example.com/avatar.jpg")
+                .authProvider("GOOGLE")
+                .providerId("google_12345")
+                .enabled(true)
+                .emailVerified(true)
+                .roles(new HashSet<>(Set.of(customerRole)))
+                .build();
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(jwtUtils.generateJwtToken(any(Authentication.class))).thenReturn("google_jwt_token_xyz");
+
+        AuthResponse response = authService.loginWithGoogle(request);
+
+        assertNotNull(response);
+        assertEquals("google_jwt_token_xyz", response.getAccessToken());
+        assertEquals("newuser@gmail.com", response.getEmail());
+        assertEquals("Google User", response.getFullName());
+        assertTrue(response.getRoles().contains("ROLE_CUSTOMER"));
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    void testLoginWithGoogle_ExistingUserWithoutProvider_LinksProviderAndReturnsJwt() {
+        GoogleLoginRequest request = GoogleLoginRequest.builder().idToken("valid_google_token").build();
+        OAuthProfile profile = OAuthProfile.builder()
+                .providerId("google_12345")
+                .email("existing@gmail.com")
+                .fullName("Google Existing")
+                .avatarUrl("https://example.com/avatar.jpg")
+                .provider("GOOGLE")
+                .build();
+
+        Role customerRole = Role.builder().idRole(1).nameRole("CUSTOMER").build();
+        User existingUser = User.builder()
+                .idUser(102)
+                .username("existing@gmail.com")
+                .email("existing@gmail.com")
+                .fullName("Existing Normal User")
+                .authProvider(null)
+                .providerId(null)
+                .enabled(true)
+                .emailVerified(true)
+                .roles(new HashSet<>(Set.of(customerRole)))
+                .build();
+
+        when(googleClient.verifyAndGetProfile("valid_google_token")).thenReturn(profile);
+        when(userRepository.findByEmail("existing@gmail.com")).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(existingUser);
+        when(jwtUtils.generateJwtToken(any(Authentication.class))).thenReturn("linked_google_jwt");
+
+        AuthResponse response = authService.loginWithGoogle(request);
+
+        assertNotNull(response);
+        assertEquals("linked_google_jwt", response.getAccessToken());
+        assertEquals("GOOGLE", existingUser.getAuthProvider());
+        assertEquals("google_12345", existingUser.getProviderId());
+        verify(userRepository, times(1)).save(existingUser);
+    }
+
+    @Test
+    void testLoginWithGoogle_AdminUserWithoutSocialLink_ThrowsBadRequestException() {
+        GoogleLoginRequest request = GoogleLoginRequest.builder().idToken("valid_google_token").build();
+        OAuthProfile profile = OAuthProfile.builder()
+                .providerId("google_12345")
+                .email("admin@shop.com")
+                .fullName("Admin User")
+                .provider("GOOGLE")
+                .build();
+
+        Role adminRole = Role.builder().idRole(99).nameRole("ADMIN").build();
+        User adminUser = User.builder()
+                .idUser(1)
+                .username("admin@shop.com")
+                .email("admin@shop.com")
+                .providerId(null)
+                .enabled(true)
+                .roles(new HashSet<>(Set.of(adminRole)))
+                .build();
+
+        when(googleClient.verifyAndGetProfile("valid_google_token")).thenReturn(profile);
+        when(userRepository.findByEmail("admin@shop.com")).thenReturn(Optional.of(adminUser));
+
+        BadRequestException exception = assertThrows(BadRequestException.class, () -> authService.loginWithGoogle(request));
+        assertTrue(exception.getMessage().contains("Quản trị viên"));
+        verify(jwtUtils, never()).generateJwtToken(any());
+    }
+
+    @Test
+    void testLoginWithGoogle_ProviderMismatch_ThrowsBadRequestException() {
+        GoogleLoginRequest request = GoogleLoginRequest.builder().idToken("valid_google_token").build();
+        OAuthProfile profile = OAuthProfile.builder()
+                .providerId("google_new_id")
+                .email("bound@gmail.com")
+                .provider("GOOGLE")
+                .build();
+
+        Role customerRole = Role.builder().idRole(1).nameRole("CUSTOMER").build();
+        User existingUser = User.builder()
+                .idUser(103)
+                .email("bound@gmail.com")
+                .authProvider("FACEBOOK")
+                .providerId("facebook_different_id")
+                .enabled(true)
+                .roles(new HashSet<>(Set.of(customerRole)))
+                .build();
+
+        when(googleClient.verifyAndGetProfile("valid_google_token")).thenReturn(profile);
+        when(userRepository.findByEmail("bound@gmail.com")).thenReturn(Optional.of(existingUser));
+
+        BadRequestException exception = assertThrows(BadRequestException.class, () -> authService.loginWithGoogle(request));
+        assertTrue(exception.getMessage().contains("đã được liên kết với một tài khoản"));
+    }
+
+    @Test
+    void testLoginWithFacebook_Success_ReturnsJwt() {
+        FacebookLoginRequest request = FacebookLoginRequest.builder().accessToken("valid_fb_token").build();
+        OAuthProfile profile = OAuthProfile.builder()
+                .providerId("fb_98765")
+                .email("fbuser@facebook.com")
+                .fullName("Facebook User")
+                .avatarUrl("https://graph.facebook.com/avatar.jpg")
+                .provider("FACEBOOK")
+                .build();
+
+        Role customerRole = Role.builder().idRole(1).nameRole("CUSTOMER").build();
+        when(facebookClient.verifyAndGetProfile("valid_fb_token")).thenReturn(profile);
+        when(userRepository.findByEmail("fbuser@facebook.com")).thenReturn(Optional.empty());
+        when(roleRepository.findByNameRole("CUSTOMER")).thenReturn(Optional.of(customerRole));
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed_uuid_password");
+
+        User savedUser = User.builder()
+                .idUser(104)
+                .username("fbuser@facebook.com")
+                .email("fbuser@facebook.com")
+                .fullName("Facebook User")
+                .avatar("https://graph.facebook.com/avatar.jpg")
+                .authProvider("FACEBOOK")
+                .providerId("fb_98765")
+                .enabled(true)
+                .emailVerified(true)
+                .roles(new HashSet<>(Set.of(customerRole)))
+                .build();
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(jwtUtils.generateJwtToken(any(Authentication.class))).thenReturn("fb_jwt_token_123");
+
+        AuthResponse response = authService.loginWithFacebook(request);
+
+        assertNotNull(response);
+        assertEquals("fb_jwt_token_123", response.getAccessToken());
+        assertEquals("fbuser@facebook.com", response.getEmail());
+    }
+
+    @Test
+    void testLoginWithFacebook_DisabledUser_ThrowsBadRequestException() {
+        FacebookLoginRequest request = FacebookLoginRequest.builder().accessToken("valid_fb_token").build();
+        OAuthProfile profile = OAuthProfile.builder()
+                .providerId("fb_98765")
+                .email("disabled@facebook.com")
+                .provider("FACEBOOK")
+                .build();
+
+        Role customerRole = Role.builder().idRole(1).nameRole("CUSTOMER").build();
+        User disabledUser = User.builder()
+                .idUser(105)
+                .email("disabled@facebook.com")
+                .enabled(false)
+                .roles(new HashSet<>(Set.of(customerRole)))
+                .build();
+
+        when(facebookClient.verifyAndGetProfile("valid_fb_token")).thenReturn(profile);
+        when(userRepository.findByEmail("disabled@facebook.com")).thenReturn(Optional.of(disabledUser));
+
+        BadRequestException exception = assertThrows(BadRequestException.class, () -> authService.loginWithFacebook(request));
+        assertTrue(exception.getMessage().contains("vô hiệu hóa"));
     }
 
     @Test

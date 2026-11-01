@@ -1,4 +1,5 @@
 package com.hoangbaoshop.hoangbaocosmetics_backend.controller;
+
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.common.ApiResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.LoginRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.RegisterRequest;
@@ -9,6 +10,9 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.VerifyOtpRequ
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.auth.ResetPasswordWithOtpRequest;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.auth.AuthResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,10 +20,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authentication Management", description = "Các API xác thực, đăng nhập tài khoản thường, Google/Facebook OAuth2, và OTP")
 public class AuthController {
 
     private final AuthService authService;
@@ -28,6 +32,7 @@ public class AuthController {
     private String frontendUrl;
 
     // [POST] đăng ký tài khoản mới
+    @Operation(summary = "Đăng ký tài khoản người dùng mới (Public)")
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
@@ -36,6 +41,7 @@ public class AuthController {
     }
 
     // [POST] đăng nhập bằng username / password
+    @Operation(summary = "Đăng nhập bằng tài khoản và mật khẩu (Public)")
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
@@ -43,6 +49,12 @@ public class AuthController {
     }
 
     // [POST] đăng nhập bằng Google OAuth
+    @Operation(summary = "Đăng nhập bằng tài khoản Google (OAuth 2.0 / OpenID Connect)", 
+               description = "Xác thực Google ID Token hoặc Access Token từ Google SDK và cấp JWT Token cho người dùng")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Đăng nhập Google thành công, trả về JWT Token và thông tin User"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Token Google không hợp lệ hoặc tài khoản bị xung đột")
+    })
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
         AuthResponse response = authService.loginWithGoogle(request);
@@ -50,6 +62,12 @@ public class AuthController {
     }
 
     // [POST] đăng nhập bằng Facebook OAuth
+    @Operation(summary = "Đăng nhập bằng tài khoản Facebook (OAuth 2.0)", 
+               description = "Xác thực Facebook User Access Token từ Facebook SDK và cấp JWT Token cho người dùng")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Đăng nhập Facebook thành công, trả về JWT Token và thông tin User"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Token Facebook không hợp lệ hoặc tài khoản bị xung đột")
+    })
     @PostMapping("/facebook")
     public ResponseEntity<ApiResponse<AuthResponse>> loginWithFacebook(@Valid @RequestBody FacebookLoginRequest request) {
         AuthResponse response = authService.loginWithFacebook(request);
@@ -114,48 +132,59 @@ public class AuthController {
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                         display: flex; align-items: center; justify-content: center;
                         min-height: 100vh;
-                        color: #1D1D1F;
-                        line-height: 1.65;
                     }
                     .card {
                         background: #FFFFFF;
-                        max-width: 480px;
-                        margin: 20px;
-                        padding: 48px 40px;
-                        border-radius: 18px;
-                        box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+                        border-radius: 16px;
+                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+                        max-width: 440px;
+                        width: 90%;
+                        padding: 40px 32px;
                         text-align: center;
                     }
                     .icon {
                         width: 64px; height: 64px;
-                        margin: 0 auto 20px;
-                        background: #E8F5E9;
+                        background-color: #E8F5E9;
                         color: #2E7D32;
                         border-radius: 50%;
-                        display: flex; align-items: center; justify-content: center;
+                        display: inline-flex;
+                        align-items: center; justify-content: center;
                         font-size: 32px;
+                        margin-bottom: 20px;
                     }
-                    h1 { font-size: 24px; font-weight: 700; margin: 0 0 12px 0; line-height: 1.35; }
-                    p { font-size: 15px; color: #86868B; line-height: 1.65; margin: 0 0 28px 0; }
+                    h1 {
+                        font-size: 22px;
+                        color: #1A1A1A;
+                        margin: 0 0 12px 0;
+                        font-weight: 700;
+                    }
+                    p {
+                        font-size: 14px;
+                        color: #666666;
+                        line-height: 1.6;
+                        margin: 0 0 28px 0;
+                    }
                     .btn {
                         display: inline-block;
-                        background-color: #0071E3;
+                        width: 100%;
+                        padding: 12px 0;
+                        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
                         color: #FFFFFF;
+                        border-radius: 8px;
                         text-decoration: none;
-                        padding: 13px 32px;
-                        border-radius: 980px;
                         font-size: 15px;
-                        font-weight: 500;
+                        font-weight: 600;
+                        transition: opacity 0.2s;
                     }
-                    .btn:hover { background-color: #0077ED; }
+                    .btn:hover { opacity: 0.9; }
                 </style>
             </head>
             <body>
                 <div class="card">
                     <div class="icon">✓</div>
-                    <h1>Xác Nhận Email Thành Công</h1>
-                    <p>Địa chỉ email của bạn đã được xác minh thành công. Bạn đã sẵn sàng trải nghiệm mua sắm tuyệt vời tại Hoàng Bảo Cosmetics!</p>
-                    <a href="%s" class="btn">Tiếp Tục Mua Sắm</a>
+                    <h1>Xác Thực Email Thành Công!</h1>
+                    <p>Tài khoản Hoàng Bảo Cosmetics của bạn đã được kích hoạt. Hãy đăng nhập để bắt đầu mua sắm ngay hôm nay.</p>
+                    <a href="%s/login" class="btn">Đăng Nhập Ngay</a>
                 </div>
             </body>
             </html>
@@ -169,7 +198,7 @@ public class AuthController {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Xác Thực Thất Bại - Hoàng Bảo Cosmetics</title>
+                <title>Lỗi Xác Nhận Email - Hoàng Bảo Cosmetics</title>
                 <style>
                     body {
                         margin: 0; padding: 0;
@@ -177,36 +206,46 @@ public class AuthController {
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                         display: flex; align-items: center; justify-content: center;
                         min-height: 100vh;
-                        color: #1D1D1F;
-                        line-height: 1.65;
                     }
                     .card {
                         background: #FFFFFF;
-                        max-width: 480px;
-                        margin: 20px;
-                        padding: 48px 40px;
-                        border-radius: 18px;
-                        box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+                        border-radius: 16px;
+                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+                        max-width: 440px;
+                        width: 90%;
+                        padding: 40px 32px;
                         text-align: center;
                     }
                     .icon {
                         width: 64px; height: 64px;
-                        margin: 0 auto 20px;
-                        background: #FFEBEE;
+                        background-color: #FFEBEE;
                         color: #C62828;
                         border-radius: 50%;
-                        display: flex; align-items: center; justify-content: center;
+                        display: inline-flex;
+                        align-items: center; justify-content: center;
                         font-size: 32px;
+                        margin-bottom: 20px;
                     }
-                    h1 { font-size: 24px; font-weight: 700; margin: 0 0 12px 0; line-height: 1.35; }
-                    p { font-size: 15px; color: #86868B; line-height: 1.65; margin: 0 0 28px 0; }
+                    h1 {
+                        font-size: 22px;
+                        color: #1A1A1A;
+                        margin: 0 0 12px 0;
+                        font-weight: 700;
+                    }
+                    p {
+                        font-size: 14px;
+                        color: #666666;
+                        line-height: 1.6;
+                        margin: 0 0 28px 0;
+                    }
                     .btn {
                         display: inline-block;
-                        background-color: #1D1D1F;
+                        width: 100%;
+                        padding: 12px 0;
+                        background-color: #6B7280;
                         color: #FFFFFF;
+                        border-radius: 8px;
                         text-decoration: none;
-                        padding: 13px 32px;
-                        border-radius: 980px;
                         font-size: 15px;
                         font-weight: 500;
                     }
@@ -227,4 +266,3 @@ public class AuthController {
             );
     }
 }
-

@@ -35,7 +35,7 @@ public class User {
     @Column(name = "phone_number", unique = true, length = 20)
     private String phoneNumber;
 
-    @Column(name = "avatar", length = 255)
+    @Column(name = "avatar", columnDefinition = "MEDIUMTEXT")
     private String avatar;
 
     @Builder.Default
@@ -65,6 +65,5 @@ public class User {
         joinColumns = @JoinColumn(name = "id_user"),
         inverseJoinColumns = @JoinColumn(name = "id_role")
     )
-
     private Set<Role> roles = new HashSet<>();
 }
