@@ -77,14 +77,22 @@ public class GoogleClient {
             Map<String, Object> tokenInfo = restTemplate.getForObject(tokenInfoUrl, Map.class);
 
             if (tokenInfo != null) {
-                String tokenAud = (String) tokenInfo.get("aud");
-                String tokenAzp = (String) tokenInfo.get("azp");
+                // Google /tokeninfo endpoint trả về "audience" và "issued_to" cho OAuth2 Access Token,
+                // hoặc "aud" và "azp" đối với JWT tokeninfo. Chúng ta kiểm tra linh hoạt tất cả các key.
+                String tokenAud = tokenInfo.get("audience") != null
+                        ? String.valueOf(tokenInfo.get("audience"))
+                        : (tokenInfo.get("aud") != null ? String.valueOf(tokenInfo.get("aud")) : null);
+
+                String tokenAzp = tokenInfo.get("issued_to") != null
+                        ? String.valueOf(tokenInfo.get("issued_to"))
+                        : (tokenInfo.get("azp") != null ? String.valueOf(tokenInfo.get("azp")) : null);
 
                 boolean isAudienceValid = (googleClientId != null && !googleClientId.isBlank()) &&
                         (googleClientId.equals(tokenAud) || googleClientId.equals(tokenAzp));
 
                 if (!isAudienceValid) {
-                    log.warn("Google Access Token bị từ chối: Audience '{}' không khớp với Client ID", tokenAud);
+                    log.warn("Google Access Token bị từ chối: Token Client ID ('{}' / '{}') không khớp với Server Client ID '{}'",
+                            tokenAud, tokenAzp, googleClientId);
                     throw new BadRequestException("Google Token không thuộc về ứng dụng này!");
                 }
 
