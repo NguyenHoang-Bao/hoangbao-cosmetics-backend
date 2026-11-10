@@ -214,6 +214,18 @@ public class CouponServiceImpl implements CouponService {
         return mapToCouponResponse(updated);
     }
 
+    
+    @Override
+    @Transactional
+    public CouponResponse toggleCouponStatus(Integer id) {
+        Coupon coupon = couponRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mã giảm giá với ID: " + id));
+        coupon.setIsActive(!Boolean.TRUE.equals(coupon.getIsActive()));
+        Coupon saved = couponRepository.save(coupon);
+        log.info("Admin đã thay đổi trạng thái mã voucher ID: {} thành: {}", id, saved.getIsActive());
+        return mapToCouponResponse(saved);
+    }
+
     @Override
     @Transactional
     public void deleteCoupon(Integer id) {

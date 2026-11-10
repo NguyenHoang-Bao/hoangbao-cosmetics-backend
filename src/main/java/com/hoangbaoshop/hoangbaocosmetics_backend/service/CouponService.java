@@ -37,5 +37,7 @@ public interface CouponService {
 
     CouponResponse updateCoupon(Integer id, CouponRequest request);
 
+    CouponResponse toggleCouponStatus(Integer id);
+
     void deleteCoupon(Integer id);
 }
