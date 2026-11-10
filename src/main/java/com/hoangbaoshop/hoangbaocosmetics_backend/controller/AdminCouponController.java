@@ -67,6 +67,15 @@ public class AdminCouponController {
         return ResponseEntity.ok(ApiResponse.success(response, "Cập nhật mã giảm giá thành công!"));
     }
 
+    
+    // [PATCH] /api/admin/coupons/{id}/status - Bật / tắt trạng thái kích hoạt mã giảm giá
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Kích hoạt / Vô hiệu hóa mã giảm giá (Admin)")
+    public ResponseEntity<ApiResponse<CouponResponse>> toggleCouponStatus(@PathVariable Integer id) {
+        CouponResponse response = couponService.toggleCouponStatus(id);
+        return ResponseEntity.ok(ApiResponse.success(response, "Cập nhật trạng thái mã giảm giá thành công!"));
+    }
+
     // [DELETE] /api/admin/coupons/{id} - Xóa mã giảm giá
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa mã giảm giá (Admin)")

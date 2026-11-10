@@ -172,4 +172,23 @@ class CouponServiceImplTest {
         assertEquals("NEWYEAR", response.getCode());
         verify(couponRepository, times(1)).save(any(Coupon.class));
     }
+
+    @Test
+    @DisplayName("Admin thay đổi trạng thái kích hoạt của voucher thành công")
+    void toggleCouponStatus_Success() {
+        Coupon coupon = Coupon.builder()
+                .idCoupon(10)
+                .code("SUMMER")
+                .isActive(true)
+                .build();
+
+        when(couponRepository.findById(10)).thenReturn(Optional.of(coupon));
+        when(couponRepository.save(any(Coupon.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CouponResponse response = couponService.toggleCouponStatus(10);
+
+        assertNotNull(response);
+        assertFalse(response.getIsActive());
+        verify(couponRepository, times(1)).save(coupon);
+    }
 }
