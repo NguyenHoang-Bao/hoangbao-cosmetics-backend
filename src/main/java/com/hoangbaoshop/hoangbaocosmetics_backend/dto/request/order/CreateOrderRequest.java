@@ -35,6 +35,8 @@ public class CreateOrderRequest {
 
     private String note;
 
+    private String couponCode;
+
     @NotEmpty(message = "Đơn hàng phải có ít nhất một sản phẩm")
     @Size(max = 20, message = "Đơn hàng không được vượt quá 20 loại sản phẩm")
     @Valid

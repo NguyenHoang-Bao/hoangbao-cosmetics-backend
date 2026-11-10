@@ -24,6 +24,8 @@ public class OrderResponse {
     private String deliveryAddress;
     private OrderType orderType;
     private BigDecimal totalProductPrice;
+    private BigDecimal discountAmount;
+    private String couponCode;
     private BigDecimal shippingFee;
     private BigDecimal totalAmount;
     private PaymentMethod paymentMethod;

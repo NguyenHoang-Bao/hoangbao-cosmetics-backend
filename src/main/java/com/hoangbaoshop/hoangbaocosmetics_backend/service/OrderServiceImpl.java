@@ -5,6 +5,7 @@ import com.hoangbaoshop.hoangbaocosmetics_backend.dto.request.order.*;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.order.OrderDetailResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.dto.response.order.OrderResponse;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.InventoryLog;
+import com.hoangbaoshop.hoangbaocosmetics_backend.entity.Coupon;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.Order;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.OrderDetail;
 import com.hoangbaoshop.hoangbaocosmetics_backend.entity.ProductVariant;
@@ -53,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final InventoryLogRepository inventoryLogRepository;
     private final EmailService emailService;
+    private final CouponService couponService;
 
     private static final DateTimeFormatter ORDER_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
