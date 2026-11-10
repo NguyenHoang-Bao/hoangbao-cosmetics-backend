@@ -50,6 +50,8 @@ class OrderServiceImplTest {
     private InventoryLogRepository inventoryLogRepository;
     @Mock
     private EmailService emailService;
+    @Mock
+    private CouponService couponService;
 
     @InjectMocks
     private OrderServiceImpl orderService;
